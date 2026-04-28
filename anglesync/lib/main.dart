@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'screens/main_shell.dart';
-import 'theme/app_theme.dart';
+import 'src/core/theme/app_theme.dart';
+import 'src/core/router/app_router.dart';
 
 void main() {
   runApp(const AngleSyncApp());
@@ -15,7 +15,8 @@ class AngleSyncApp extends StatelessWidget {
       title: 'AngleSync',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const MainShell(),
+      initialRoute: AppRouter.home,
+      onGenerateRoute: AppRouter.onGenerateRoute,
     );
   }
 }
