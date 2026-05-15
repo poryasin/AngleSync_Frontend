@@ -1,8 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';   
-import '../../../core/router/app_router.dart';  
-import '../../navigation/presentation/home_screen.dart';  
+import '../../../core/theme/app_theme.dart';
+import '../../../core/router/app_router.dart';
+import '../../navigation/presentation/home_screen.dart';
+import '../../history/presentation/history_screen.dart';
+
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -11,25 +13,29 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
+  int _selectedNavIndex = 0; 
 
   final List<Widget> _pages = const [
     HomeScreen(),
+    HistoryScreen(),
   ];
+
+  int get _pageIndex => _selectedNavIndex == 2 ? 1 : 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      body: _pages[_currentIndex],
+      body: _pages[_pageIndex],
       bottomNavigationBar: _BottomNavBar(
-        currentIndex: _currentIndex,
+        currentIndex: _selectedNavIndex,
         onTap: (index) {
           if (index == 1) {
+            // Scan เป็น push route ไม่ใช่ tab
             Navigator.pushNamed(context, AppRouter.scan);
             return;
           }
-          setState(() => _currentIndex = index == 0 ? 0 : 1);
+          setState(() => _selectedNavIndex = index);
         },
       ),
     );
@@ -74,8 +80,8 @@ class _BottomNavBar extends StatelessWidget {
                 onTap: () => onTap(1),
               ),
               _NavItem(
-                icon: CupertinoIcons.square_grid_2x2_fill,
-                outlineIcon: CupertinoIcons.square_grid_2x2,
+                icon: CupertinoIcons.clock_fill,
+                outlineIcon: CupertinoIcons.clock,
                 label: 'History',
                 selected: currentIndex == 2,
                 onTap: () => onTap(2),
