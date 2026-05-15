@@ -19,9 +19,9 @@ class HomeScreen extends StatelessWidget {
               const _HeroSection(),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
-                child: _ScanCard(),
+                child: _ScanCalendarCard(),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: _ScanPostureButton(),
@@ -34,6 +34,11 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: _RecentScansSection(),
+              ),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -42,7 +47,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// App Bar 
+// App Bar
 class _AppBar extends StatelessWidget {
   const _AppBar();
 
@@ -92,7 +97,6 @@ class _HeroSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
@@ -122,10 +126,7 @@ class _HeroSection extends StatelessWidget {
               ],
             ),
           ),
-
           const SizedBox(height: 20),
-
-          // Headline
           SizedBox(
             width: double.infinity,
             child: ShaderMask(
@@ -146,9 +147,7 @@ class _HeroSection extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           Text(
             'Scan your posture with your camera and get\ninstant, AI-powered feedback on every rep.',
             textAlign: TextAlign.center,
@@ -164,9 +163,16 @@ class _HeroSection extends StatelessWidget {
   }
 }
 
-// Scan Card
-class _ScanCard extends StatelessWidget {
-  const _ScanCard();
+// Scan Calendar Card
+class _ScanCalendarCard extends StatelessWidget {
+  const _ScanCalendarCard();
+
+  // mock data of days user scanned in current month (1-based day numbers)
+  static const Set<int> _scannedDays = {1, 2, 4, 5, 8, 9, 11, 12, 13};
+
+  static const int _firstWeekdayOffset = 3; // May 2025 starts on Thursday
+  static const int _totalDays = 31;
+  static const int _today = 14;
 
   @override
   Widget build(BuildContext context) {
@@ -182,104 +188,211 @@ class _ScanCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(12),
-      child: Container(
-        height: 220,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF4DD08A), AppTheme.teal],
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CustomPaint(
-              size: const Size(72, 72),
-              painter: _ScannerPainter(),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Ready to scan',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Scan calendar',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Days you scanned this month',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_scannedDays.length} days',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.green,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Day of week headers
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _DayLabel('M'),
+              _DayLabel('T'),
+              _DayLabel('W'),
+              _DayLabel('T'),
+              _DayLabel('F'),
+              _DayLabel('S'),
+              _DayLabel('S'),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Calendar grid
+          _buildCalendarGrid(),
+
+          const SizedBox(height: 16),
+
+          // Legend
+          Row(
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: const BoxDecoration(
+                  color: AppTheme.green,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Scanned',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+              const SizedBox(width: 16),
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'No scan',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarGrid() {
+    // list of day numbers with null for empty cells before the first day
+    final List<int?> days = [
+      ...List.filled(_firstWeekdayOffset, null),
+      ...List.generate(_totalDays, (i) => i + 1),
+    ];
+
+    while (days.length % 7 != 0) {
+      days.add(null);
+    }
+
+    final rows = days.length ~/ 7;
+
+    return Column(
+      children: List.generate(rows, (rowIndex) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(7, (colIndex) {
+              final day = days[rowIndex * 7 + colIndex];
+              return _DayCell(
+                day: day,
+                isScanned: day != null && _scannedDays.contains(day),
+                isToday: day == _today,
+              );
+            }),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _DayLabel extends StatelessWidget {
+  final String label;
+  const _DayLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 36,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Colors.grey.shade400,
         ),
       ),
     );
   }
 }
 
-class _ScannerPainter extends CustomPainter {
+class _DayCell extends StatelessWidget {
+  final int? day;
+  final bool isScanned;
+  final bool isToday;
+
+  const _DayCell({
+    required this.day,
+    required this.isScanned,
+    required this.isToday,
+  });
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
+  Widget build(BuildContext context) {
+    if (day == null) {
+      return const SizedBox(width: 36, height: 36);
+    }
 
-    const r = 10.0;
-    const arm = 20.0;
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final left = cx - 28;
-    final right = cx + 28;
-    final top = cy - 24;
-    final bottom = cy + 24;
-
-    canvas.drawPath(
-      Path()
-        ..moveTo(left + arm, top)
-        ..lineTo(left + r, top)
-        ..arcToPoint(Offset(left, top + r), radius: const Radius.circular(r))
-        ..lineTo(left, top + arm),
-      paint,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(right - arm, top)
-        ..lineTo(right - r, top)
-        ..arcToPoint(Offset(right, top + r),
-            radius: const Radius.circular(r), clockwise: false)
-        ..lineTo(right, top + arm),
-      paint,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(left, bottom - arm)
-        ..lineTo(left, bottom - r)
-        ..arcToPoint(Offset(left + r, bottom),
-            radius: const Radius.circular(r), clockwise: false)
-        ..lineTo(left + arm, bottom),
-      paint,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(right, bottom - arm)
-        ..lineTo(right, bottom - r)
-        ..arcToPoint(Offset(right - r, bottom),
-            radius: const Radius.circular(r))
-        ..lineTo(right - arm, bottom),
-      paint,
-    );
-
-    canvas.drawLine(
-      Offset(cx - 14, cy + 4),
-      Offset(cx + 14, cy + 4),
-      paint..strokeWidth = 2.5,
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: isScanned
+            ? AppTheme.green
+            : Colors.grey.shade100,
+        shape: BoxShape.circle,
+        border: isToday && !isScanned
+            ? Border.all(color: AppTheme.green, width: 2)
+            : null,
+      ),
+      child: Center(
+        child: Text(
+          '$day',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: isScanned
+                ? Colors.white
+                : isToday
+                    ? AppTheme.green
+                    : Colors.grey.shade500,
+          ),
+        ),
+      ),
     );
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // Scan Posture Button
@@ -329,6 +442,207 @@ class _ScanPostureButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// Recent Scans Section
+class _RecentScansSection extends StatelessWidget {
+  const _RecentScansSection();
+
+  static const List<Map<String, dynamic>> _recentScans = [
+    {
+      'title': 'Morning squat check',
+      'exercise': 'Squat',
+      'time': 'Today',
+      'score': 88,
+    },
+    {
+      'title': 'Push-up form review',
+      'exercise': 'Push-up',
+      'time': 'Yesterday',
+      'score': 75,
+    },
+    {
+      'title': 'Plank hold test',
+      'exercise': 'Plank',
+      'time': '2 days ago',
+      'score': 92,
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Recent scans',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textDark,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Jump back into your latest progress.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+            GestureDetector(
+              onTap: () {},
+              child: const Row(
+                children: [
+                  Text(
+                    'View all',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.green,
+                    ),
+                  ),
+                  SizedBox(width: 2),
+                  Icon(
+                    CupertinoIcons.chevron_right,
+                    size: 14,
+                    color: AppTheme.green,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Scan items
+        ..._recentScans.map((scan) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _RecentScanItem(
+                title: scan['title'] as String,
+                exercise: scan['exercise'] as String,
+                time: scan['time'] as String,
+                score: scan['score'] as int,
+              ),
+            )),
+      ],
+    );
+  }
+}
+
+class _RecentScanItem extends StatelessWidget {
+  final String title;
+  final String exercise;
+  final String time;
+  final int score;
+
+  const _RecentScanItem({
+    required this.title,
+    required this.exercise,
+    required this.time,
+    required this.score,
+  });
+
+  Color get _scoreColor {
+    if (score >= 85) return AppTheme.green;
+    if (score >= 70) return Colors.blue.shade300;
+    return Colors.orange;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Score badge
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: _scoreColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Text(
+                '$score',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _scoreColor,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      CupertinoIcons.arrow_up_right,
+                      size: 12,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$exercise · $time',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Arrow
+          Icon(
+            CupertinoIcons.chevron_right,
+            size: 16,
+            color: Colors.grey.shade300,
+          ),
+        ],
       ),
     );
   }
