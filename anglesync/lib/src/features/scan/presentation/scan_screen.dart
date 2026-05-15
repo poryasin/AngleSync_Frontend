@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';   
 import '../../../core/router/app_router.dart';  
 import '../domain/exercise_item.dart';
+import '../domain/exercise_detail.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -224,7 +225,7 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 }
 
-// ── Exercise Card ─────────────────────────────────────────────────────────────
+// Exercise Card
 class _ExerciseCard extends StatelessWidget {
   final ExerciseItem item;
 
@@ -234,10 +235,14 @@ class _ExerciseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(
-        context,
-        AppRouter.videoUpload,
-        arguments: {'exercise': item},
+      context,
+      AppRouter.upload,
+      arguments: ExerciseDetail(
+        title: item.title,           // title → name
+        category: item.category,
+        description: item.description,
       ),
+    ),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
