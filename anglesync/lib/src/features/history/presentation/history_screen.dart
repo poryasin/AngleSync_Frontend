@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/scan_history_item.dart';
 
+
+
+
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
@@ -29,14 +32,10 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return  Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
+      child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
                 child: Column(
@@ -70,57 +69,14 @@ class HistoryScreen extends StatelessWidget {
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+        )
+    ),
+  ),
     );
-  }
+  
+}
 }
 
-// App Bar
-class _HistoryAppBar extends StatelessWidget {
-  const _HistoryAppBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                CupertinoIcons.arrow_left,
-                size: 18,
-                color: AppTheme.textDark,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'History',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textDark,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // Scan History Card
 class _ScanHistoryCard extends StatelessWidget {

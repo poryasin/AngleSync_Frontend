@@ -2,9 +2,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/app_bottom_nav_bar.dart';
+import '../../history/presentation/history_screen.dart';
+
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final VoidCallback? onViewAllHistory;
+  const HomeScreen({super.key, this.onViewAllHistory});
+
 
   @override
   Widget build(BuildContext context) {
@@ -34,9 +39,9 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
-                child: _RecentScansSection(),
+                child: _RecentScansSection(onViewAllHistory: onViewAllHistory,),
               ),
               const SizedBox(height: 32),
             ],
@@ -449,7 +454,9 @@ class _ScanPostureButton extends StatelessWidget {
 
 // Recent Scans Section
 class _RecentScansSection extends StatelessWidget {
-  const _RecentScansSection();
+  final VoidCallback? onViewAllHistory;
+  const _RecentScansSection({this.onViewAllHistory});
+
 
   static const List<Map<String, dynamic>> _recentScans = [
     {
@@ -505,7 +512,7 @@ class _RecentScansSection extends StatelessWidget {
               ],
             ),
             GestureDetector(
-              onTap: () {},
+            onTap: onViewAllHistory,
               child: const Row(
                 children: [
                   Text(
