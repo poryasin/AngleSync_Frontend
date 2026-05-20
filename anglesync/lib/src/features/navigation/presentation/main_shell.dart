@@ -1,24 +1,31 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/app_bottom_nav_bar.dart';
 import '../../navigation/presentation/home_screen.dart';
 import '../../history/presentation/history_screen.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  final int initialIndex;
+  const MainShell({super.key , this.initialIndex = 0});
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _selectedNavIndex = 0; 
+  int _selectedNavIndex = 0;
+  late List<Widget> _pages;
 
-  final List<Widget> _pages = const [
-    HomeScreen(),
-    HistoryScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _selectedNavIndex = widget.initialIndex;
+    _pages = [
+      HomeScreen(onViewAllHistory: () => setState(() => _selectedNavIndex = 2)),
+      const HistoryScreen(),
+    ];
+  }
 
   int get _pageIndex => _selectedNavIndex == 2 ? 1 : 0;
 
@@ -26,115 +33,31 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      body: _pages[_pageIndex],
-      bottomNavigationBar: _BottomNavBar(
+      body: Stack(
+        children: [
+      Offstage(
+      offstage: _pageIndex != 0,
+      child: _pages[0],
+    ),
+      Offstage(
+      offstage: _pageIndex != 1,
+      child: _pages[1],
+    ),
+  ],
+      ),
+      bottomNavigationBar: AppBottomNavBar(
         currentIndex: _selectedNavIndex,
         onTap: (index) {
           if (index == 1) {
-            // Scan เป็น push route ไม่ใช่ tab
-            Navigator.pushNamed(context, AppRouter.scan);
+            Navigator.pushNamed(context, AppRouter.scan).then((result) {
+              setState(() {
+    if (result == 2) _selectedNavIndex = 2;
+  });
+});
             return;
           }
           setState(() => _selectedNavIndex = index);
         },
-      ),
-    );
-  }
-}
-
-// Bottom Navigation Bar
-class _BottomNavBar extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTap;
-
-  const _BottomNavBar({
-    required this.currentIndex,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
-      ),
-      child: SafeArea(
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: CupertinoIcons.house_fill,
-                outlineIcon: CupertinoIcons.house,
-                label: 'Home',
-                selected: currentIndex == 0,
-                onTap: () => onTap(0),
-              ),
-              _NavItem(
-                icon: CupertinoIcons.viewfinder,
-                outlineIcon: CupertinoIcons.viewfinder,
-                label: 'Scan',
-                selected: currentIndex == 1,
-                onTap: () => onTap(1),
-              ),
-              _NavItem(
-                icon: CupertinoIcons.clock_fill,
-                outlineIcon: CupertinoIcons.clock,
-                label: 'History',
-                selected: currentIndex == 2,
-                onTap: () => onTap(2),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final IconData outlineIcon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.outlineIcon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 80,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              selected ? icon : outlineIcon,
-              color: selected ? AppTheme.green : AppTheme.textGrey,
-              size: 22,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: selected ? AppTheme.green : AppTheme.textGrey,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

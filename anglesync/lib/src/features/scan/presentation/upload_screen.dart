@@ -1,7 +1,11 @@
+import 'dart:math';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/exercise_detail.dart';
+import '../../../core/router/app_router.dart';
+import '../../../core/widgets/app_bottom_nav_bar.dart';
 
 class UploadScreen extends StatefulWidget {
   final ExerciseDetail exercise;
@@ -31,11 +35,8 @@ class _UploadScreenState extends State<UploadScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Reference section
                     _ReferenceSection(exercise: widget.exercise),
                     const SizedBox(height: 28),
-
-                    // Your Video section
                     _YourVideoSection(
                       hasVideo: _hasVideo,
                       onUploadTap: () {
@@ -44,8 +45,6 @@ class _UploadScreenState extends State<UploadScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-
-                    // Analyze card
                     _AnalyzeCard(hasVideo: _hasVideo),
                     const SizedBox(height: 20),
                   ],
@@ -73,28 +72,23 @@ class _UploadAppBar extends StatelessWidget {
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                CupertinoIcons.arrow_left,
-                size: 18,
-                color: AppTheme.textDark,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textDark,
-              letterSpacing: -0.3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  CupertinoIcons.chevron_left,
+                  size: 20,
+                  color: CupertinoColors.activeBlue,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Categories',         
+                  style: const TextStyle(
+                    fontSize: 17,
+                    color: CupertinoColors.activeBlue,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -102,7 +96,6 @@ class _UploadAppBar extends StatelessWidget {
     );
   }
 }
-
 // Reference Section
 class _ReferenceSection extends StatelessWidget {
   final ExerciseDetail exercise;
@@ -114,16 +107,15 @@ class _ReferenceSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label + category badge
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'REFERENCE',
+              exercise.title,                // ชื่อ exercise
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey.shade500,
+                color: Colors.black,
                 letterSpacing: 1.2,
               ),
             ),
@@ -146,8 +138,6 @@ class _ReferenceSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-
-        // Video player placeholder
         Container(
           width: double.infinity,
           height: 200,
@@ -158,7 +148,6 @@ class _ReferenceSection extends StatelessWidget {
           child: Stack(
             alignment: Alignment.bottomLeft,
             children: [
-              // Play button
               Center(
                 child: Container(
                   width: 48,
@@ -174,7 +163,6 @@ class _ReferenceSection extends StatelessWidget {
                   ),
                 ),
               ),
-              // Bottom bar
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -225,7 +213,6 @@ class _ReferenceSection extends StatelessWidget {
                   ),
                 ),
               ),
-              // Progress bar
               Positioned(
                 bottom: 40,
                 left: 0,
@@ -233,7 +220,8 @@ class _ReferenceSection extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: 0,
                   backgroundColor: Colors.white.withOpacity(0.3),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(Colors.white),
                   minHeight: 2,
                 ),
               ),
@@ -241,8 +229,6 @@ class _ReferenceSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-
-        // Description
         Text(
           exercise.description,
           style: TextStyle(
@@ -281,8 +267,6 @@ class _YourVideoSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-
-        // Upload area
         GestureDetector(
           onTap: onUploadTap,
           child: Container(
@@ -299,7 +283,6 @@ class _YourVideoSection extends StatelessWidget {
             ),
             child: Column(
               children: [
-                // Upload icon
                 Container(
                   width: 56,
                   height: 56,
@@ -324,7 +307,7 @@ class _YourVideoSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Drop a clip here, or click to browse. MP4 /\nMOV, not exceed 60 seconds.',
+                  'Drop a clip here, or click to browse. MP4 /\nMOV, not exceeding 60 seconds.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
@@ -360,37 +343,38 @@ class _YourVideoSection extends StatelessWidget {
   }
 }
 
-// Analyze Card
+// Analyze Card — analyze button only
 class _AnalyzeCard extends StatelessWidget {
   final bool hasVideo;
 
   const _AnalyzeCard({required this.hasVideo});
 
- @override
-Widget build(BuildContext context) {
-  return SizedBox(
-    width: double.infinity,
-    height: 50,
-    child: ElevatedButton(
-      onPressed: hasVideo ? () {} : null,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: hasVideo
-            ? AppTheme.green
-            : AppTheme.green.withOpacity(0.4),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: hasVideo ? () {
+          Navigator.pushNamed(context, AppRouter.analysisResult);
+        } : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              hasVideo ? AppTheme.green : AppTheme.green.withOpacity(0.4),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+        ),
+        child: const Text(
+          'Analyze posture',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
-      child: const Text(
-        'Analyze posture',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ),
-  );
-}
+    );
+  }
 }

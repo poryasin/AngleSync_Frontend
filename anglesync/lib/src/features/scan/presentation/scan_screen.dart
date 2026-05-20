@@ -1,9 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';   
-import '../../../core/router/app_router.dart';  
+import '../../../core/theme/app_theme.dart';
+import '../../../core/router/app_router.dart';
 import '../domain/exercise_item.dart';
 import '../domain/exercise_detail.dart';
+import '../../../core/widgets/app_bottom_nav_bar.dart';
+import '../../history/presentation/history_screen.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -39,13 +41,8 @@ class _ScanScreenState extends State<ScanScreen> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // App Bar
             SliverToBoxAdapter(child: _buildAppBar(context)),
-
-            // Hero + Search
             SliverToBoxAdapter(child: _buildHero()),
-
-            // Exercise List
             if (_filtered.isEmpty)
               SliverToBoxAdapter(child: _buildEmpty())
             else
@@ -68,39 +65,27 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F0F0),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                CupertinoIcons.arrow_left,
-                size: 18,
-                color: AppTheme.textDark,
-              ),
-            ),
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    child: Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Icon(CupertinoIcons.xmark, size: 22, color: AppTheme.textDark),
+        ),
+        const SizedBox(width: 14),
+        const Text(
+          'Categories',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textDark,
           ),
-          const SizedBox(width: 14),
-          const Text(
-            'Categories',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textDark,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildHero() {
     return Padding(
@@ -108,7 +93,6 @@ class _ScanScreenState extends State<ScanScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
@@ -138,9 +122,7 @@ class _ScanScreenState extends State<ScanScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 14),
-
           const Text(
             'Pick an exercise\nto scan',
             style: TextStyle(
@@ -151,9 +133,7 @@ class _ScanScreenState extends State<ScanScreen> {
               letterSpacing: -0.5,
             ),
           ),
-
           const SizedBox(height: 10),
-
           Text(
             'Tap any card to upload your video and get instant\njoint-by-joint feedback.',
             style: TextStyle(
@@ -162,10 +142,7 @@ class _ScanScreenState extends State<ScanScreen> {
               height: 1.5,
             ),
           ),
-
           const SizedBox(height: 18),
-
-          // Search Bar
           Container(
             height: 50,
             decoration: BoxDecoration(
@@ -182,8 +159,7 @@ class _ScanScreenState extends State<ScanScreen> {
             child: Row(
               children: [
                 const SizedBox(width: 16),
-                Icon(CupertinoIcons.search,
-                    size: 18, color: Colors.grey.shade400),
+                Icon(CupertinoIcons.search, size: 18, color: Colors.grey.shade400),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
@@ -225,7 +201,6 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 }
 
-// Exercise Card
 class _ExerciseCard extends StatelessWidget {
   final ExerciseItem item;
 
@@ -235,14 +210,14 @@ class _ExerciseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(
-      context,
-      AppRouter.upload,
-      arguments: ExerciseDetail(
-        title: item.title,           // title → name
-        category: item.category,
-        description: item.description,
+        context,
+        AppRouter.upload,
+        arguments: ExerciseDetail(
+          title: item.title,
+          category: item.category,
+          description: item.description,
+        ),
       ),
-    ),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -258,31 +233,24 @@ class _ExerciseCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Thumbnail
             Stack(
               children: [
                 Container(
                   height: 200,
                   decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(20)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.grey.shade300,
-                        Colors.grey.shade200,
-                      ],
+                      colors: [Colors.grey.shade300, Colors.grey.shade200],
                     ),
                   ),
                 ),
-                // Category Badge
                 Positioned(
                   top: 14,
                   right: 14,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -298,7 +266,6 @@ class _ExerciseCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Play Button
                 Positioned.fill(
                   child: Center(
                     child: Container(
@@ -324,8 +291,6 @@ class _ExerciseCard extends StatelessWidget {
                 ),
               ],
             ),
-
-            // Text
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
               child: Column(
