@@ -1,23 +1,90 @@
-import 'dart:math';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_theme.dart';
+import '../../../core/service/analysis_service.dart';
+import '../../results/presentation/analysis_result_screen.dart';
 import '../domain/exercise_detail.dart';
-import '../../../core/router/app_router.dart';
-import '../../../core/widgets/app_bottom_nav_bar.dart';
 
 class UploadScreen extends StatefulWidget {
   final ExerciseDetail exercise;
 
-  const UploadScreen({super.key, required this.exercise});
+  const UploadScreen({
+    super.key,
+    required this.exercise,
+  });
 
   @override
   State<UploadScreen> createState() => _UploadScreenState();
 }
 
 class _UploadScreenState extends State<UploadScreen> {
-  bool _hasVideo = false;
+  File? _selectedVideo;
+  bool _isLoading = false;
+
+  final AnalysisService _analysisService = AnalysisService();
+
+  bool get _hasVideo => _selectedVideo != null;
+
+  Future<void> _pickVideo() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+    );
+
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _selectedVideo = File(result.files.single.path!);
+      });
+    }
+  }
+
+  Future<void> _analyzeVideo() async {
+    if (_selectedVideo == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final isOnline = await _analysisService.isServerOnline();
+
+    if (!isOnline) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Backend server is not running'),
+          ),
+        );
+      }
+      return;
+    }
+
+    final stream = _analysisService.analyzeVideo(
+      videoFile: _selectedVideo!,
+      exerciseName: widget.exercise.title,
+    );
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AnalysisResultScreen(
+            analysisStream: stream,
+          ),
+        ),
+      );
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +94,9 @@ class _UploadScreenState extends State<UploadScreen> {
         child: Column(
           children: [
             _UploadAppBar(title: widget.exercise.title),
-            const Divider(height: 1, thickness: 1),
+            const Divider(height: 1),
             Expanded(
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,14 +105,14 @@ class _UploadScreenState extends State<UploadScreen> {
                     const SizedBox(height: 28),
                     _YourVideoSection(
                       hasVideo: _hasVideo,
-                      onUploadTap: () {
-                        // TODO: implement file picker
-                        setState(() => _hasVideo = true);
-                      },
+                      onUploadTap: _pickVideo,
                     ),
                     const SizedBox(height: 20),
-                    _AnalyzeCard(hasVideo: _hasVideo),
-                    const SizedBox(height: 20),
+                    _AnalyzeCard(
+                      hasVideo: _hasVideo,
+                      isLoading: _isLoading,
+                      onAnalyze: _analyzeVideo,
+                    ),
                   ],
                 ),
               ),
@@ -58,34 +124,33 @@ class _UploadScreenState extends State<UploadScreen> {
   }
 }
 
-// App Bar
 class _UploadAppBar extends StatelessWidget {
   final String title;
 
-  const _UploadAppBar({required this.title});
+  const _UploadAppBar({
+    required this.title,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: const Row(
               children: [
-                const Icon(
+                Icon(
                   CupertinoIcons.chevron_left,
-                  size: 20,
                   color: CupertinoColors.activeBlue,
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 Text(
-                  'Categories',         
-                  style: const TextStyle(
-                    fontSize: 17,
+                  'Categories',
+                  style: TextStyle(
                     color: CupertinoColors.activeBlue,
+                    fontSize: 17,
                   ),
                 ),
               ],
@@ -96,46 +161,25 @@ class _UploadAppBar extends StatelessWidget {
     );
   }
 }
-// Reference Section
+
 class _ReferenceSection extends StatelessWidget {
   final ExerciseDetail exercise;
 
-  const _ReferenceSection({required this.exercise});
+  const _ReferenceSection({
+    required this.exercise,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              exercise.title,                // ชื่อ exercise
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-                letterSpacing: 1.2,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                exercise.category.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade600,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          exercise.title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 12),
         Container(
@@ -145,95 +189,19 @@ class _ReferenceSection extends StatelessWidget {
             color: Colors.black,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Stack(
-            alignment: Alignment.bottomLeft,
-            children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    CupertinoIcons.play_fill,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        CupertinoIcons.play_fill,
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        '0:00',
-                        style: TextStyle(color: Colors.white, fontSize: 13),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        CupertinoIcons.speaker_slash_fill,
-                        color: Colors.white.withOpacity(0.7),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 12),
-                      Icon(
-                        CupertinoIcons.fullscreen,
-                        color: Colors.white.withOpacity(0.7),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 12),
-                      Icon(
-                        CupertinoIcons.ellipsis_vertical,
-                        color: Colors.white.withOpacity(0.7),
-                        size: 16,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 40,
-                left: 0,
-                right: 0,
-                child: LinearProgressIndicator(
-                  value: 0,
-                  backgroundColor: Colors.white.withOpacity(0.3),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(Colors.white),
-                  minHeight: 2,
-                ),
-              ),
-            ],
+          child: const Center(
+            child: Icon(
+              CupertinoIcons.play_fill,
+              color: Colors.white,
+              size: 40,
+            ),
           ),
         ),
         const SizedBox(height: 12),
         Text(
           exercise.description,
           style: TextStyle(
-            fontSize: 15,
-            color: Colors.grey.shade500,
+            color: Colors.grey.shade600,
             height: 1.5,
           ),
         ),
@@ -242,7 +210,6 @@ class _ReferenceSection extends StatelessWidget {
   }
 }
 
-// Your Video Section
 class _YourVideoSection extends StatelessWidget {
   final bool hasVideo;
   final VoidCallback onUploadTap;
@@ -254,100 +221,57 @@ class _YourVideoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'YOUR VIDEO',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade500,
-            letterSpacing: 1.2,
+    return GestureDetector(
+      onTap: onUploadTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          vertical: 36,
+          horizontal: 20,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.grey.shade300,
           ),
         ),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: onUploadTap,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                width: 1.5,
-                style: BorderStyle.solid,
+        child: Column(
+          children: [
+            Icon(
+              hasVideo
+                  ? CupertinoIcons.check_mark_circled_solid
+                  : CupertinoIcons.arrow_up_to_line,
+              size: 48,
+              color: AppTheme.green,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              hasVideo
+                  ? 'Video Selected'
+                  : 'Upload your workout video',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            child: Column(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: AppTheme.green.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    CupertinoIcons.arrow_up_to_line,
-                    color: AppTheme.green,
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Upload your workout video',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textDark,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Drop a clip here, or click to browse. MP4 /\nMOV, not exceeding 60 seconds.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade500,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      CupertinoIcons.videocam,
-                      size: 14,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Processed locally on your device',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
-// Analyze Card — analyze button only
 class _AnalyzeCard extends StatelessWidget {
   final bool hasVideo;
+  final bool isLoading;
+  final VoidCallback onAnalyze;
 
-  const _AnalyzeCard({required this.hasVideo});
+  const _AnalyzeCard({
+    required this.hasVideo,
+    required this.isLoading,
+    required this.onAnalyze,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -355,25 +279,27 @@ class _AnalyzeCard extends StatelessWidget {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: hasVideo ? () {
-          Navigator.pushNamed(context, AppRouter.analysisResult);
-        } : null,
+        onPressed: hasVideo && !isLoading ? onAnalyze : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              hasVideo ? AppTheme.green : AppTheme.green.withOpacity(0.4),
-          foregroundColor: Colors.white,
-          elevation: 0,
+          backgroundColor: hasVideo
+              ? AppTheme.green
+              : AppTheme.green.withOpacity(0.4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
           ),
         ),
-        child: const Text(
-          'Analyze posture',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child: isLoading
+            ? const CircularProgressIndicator(
+                color: Colors.white,
+              )
+            : const Text(
+                'Analyze posture',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }

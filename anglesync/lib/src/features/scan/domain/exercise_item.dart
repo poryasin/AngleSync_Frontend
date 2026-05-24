@@ -1,39 +1,31 @@
 class ExerciseItem {
+  final int id;
   final String title;
-  final String description;
   final String category;
+  final String description;
+  final String thumbnailUrl;
+  final String videoUrl;
+  final String gender;
 
   const ExerciseItem({
+    required this.id,
     required this.title,
-    required this.description,
     required this.category,
+    required this.description,
+    required this.thumbnailUrl,
+    required this.videoUrl,
+    required this.gender,
   });
 
-  static const List<ExerciseItem> all = [
-    ExerciseItem(
-      title: 'Bodyweight Squat',
-      description: 'Hip-width stance, sit back into hips, knees track over toes, chest tall.',
-      category: 'LOWER BODY',
-    ),
-    ExerciseItem(
-      title: 'Push Up',
-      description: 'Hands shoulder-width apart, lower chest to floor, keep core tight.',
-      category: 'UPPER BODY',
-    ),
-    ExerciseItem(
-      title: 'Romanian Deadlift',
-      description: 'Hinge at hips, soft knee bend, bar stays close to legs throughout.',
-      category: 'LOWER BODY',
-    ),
-    ExerciseItem(
-      title: 'Overhead Press',
-      description: 'Bar at collarbone, press straight up, lock out at top with ears forward.',
-      category: 'UPPER BODY',
-    ),
-    ExerciseItem(
-      title: 'Plank',
-      description: 'Forearms flat, hips level, brace core and glutes, breathe steadily.',
-      category: 'CORE',
-    ),
-  ];
+  factory ExerciseItem.fromJson(Map<String, dynamic> json) {
+    return ExerciseItem(
+      id: json['id'],
+      title: json['exercise_name'],
+      category: json['category'],
+      description: json['description'],
+      thumbnailUrl: json['thumbnail_url'],
+      videoUrl: json['video_url'],
+      gender: json['gender'],
+    );
+  }
 }
