@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:anglesync/src/core/config/backend_config.dart';
 import 'package:anglesync/src/features/scan/domain/exercise_item.dart';
 
 class ExerciseService {
-  static const String baseUrl = 'http://192.168.1.163:8000';
-
   static Future<List<ExerciseItem>> fetchExercises() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/exercises'),
+      Uri.parse('${BackendConfig.baseUrl}/exercises'),
     );
 
     if (response.statusCode == 200) {
@@ -15,13 +14,13 @@ class ExerciseService {
 
       return data.map<ExerciseItem>((json) {
         return ExerciseItem(
-          id: json['id'] ?? 0,
+          id: json['reference_video_id'] ?? 0,
           title: json['exercise_name'] ?? '',
           gender: json['reference_gender'] ?? '',
           category: json['reference_gender'] ?? '',
-          thumbnailUrl: json['thumbnail_url'] ?? '',
-          videoUrl: json['reference_video_url'] ?? '',
-          description: json['reference_video_url'] ?? '',
+          thumbnailUrl: BackendConfig.resolveUrl(json['thumbnail_url']),
+          videoUrl: BackendConfig.resolveUrl(json['reference_video_url']),
+          description: json['reference_gender'] ?? '',
         );
       }).toList();
     } else {

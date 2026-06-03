@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:anglesync/src/core/config/backend_config.dart';
 
 //
 // MODELS
@@ -162,21 +163,18 @@ class ErrorEvent extends AnalysisEvent {
 //
 
 class AnalysisService {
-  static const String _baseUrl = 'http://192.168.1.163:8000';
-
   Stream<AnalysisEvent> analyzeVideo({
     required File videoFile,
     required String exerciseName,
+    required int referenceVideoId,
   }) async* {
-    final uri = Uri.parse('$_baseUrl/analyze/stream');
+    final uri = Uri.parse('${BackendConfig.baseUrl}/analyze/stream');
 
     final request = http.MultipartRequest('POST', uri)
-      ..files.add(
-        await http.MultipartFile.fromPath(
-          'file', // ต้องตรงกับ FastAPI
-          videoFile.path,
-        ),
-      );
+    ..files.add(
+      await http.MultipartFile.fromPath('file', videoFile.path),
+    )
+    ..fields['reference_video_id'] = referenceVideoId.toString();
 
     http.StreamedResponse response;
 
@@ -214,11 +212,7 @@ class AnalysisService {
         } else if (line.isEmpty &&
             currentEvent.isNotEmpty &&
             currentData.isNotEmpty) {
-          final event = _parseEvent(
-            currentEvent,
-            currentData,
-            exerciseName,
-          );
+          final event = _parseEvent(currentEvent, currentData, exerciseName);
 
           if (event != null) {
             yield event;
@@ -231,11 +225,7 @@ class AnalysisService {
     }
   }
 
-  AnalysisEvent? _parseEvent(
-    String type,
-    String data,
-    String exerciseName,
-  ) {
+  AnalysisEvent? _parseEvent(String type, String data, String exerciseName) {
     try {
       final json = jsonDecode(data);
 
@@ -250,9 +240,7 @@ class AnalysisService {
           return PartialEvent(AnalysisPartial.fromJson(json));
 
         case 'result':
-          return ResultEvent(
-            AnalysisResult.fromJson(json, exerciseName),
-          );
+          return ResultEvent(AnalysisResult.fromJson(json, exerciseName));
 
         case 'error':
           return ErrorEvent(json['message'] ?? 'Unknown error');
@@ -268,7 +256,7 @@ class AnalysisService {
   Future<bool> isServerOnline() async {
     try {
       final response = await http
-          .get(Uri.parse(_baseUrl))
+          .get(Uri.parse(BackendConfig.baseUrl))
           .timeout(const Duration(seconds: 3));
 
       return response.statusCode == 200;

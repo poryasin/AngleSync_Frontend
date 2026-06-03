@@ -28,6 +28,8 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  image_picker: ^1.0.7
+  photo_manager: ^3.9.0
   flutter:
     sdk: flutter
 
@@ -57,6 +59,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/videos/IMG_2117.MOV
 
   # To add assets to your application, add an assets section, like this:
   # assets:
