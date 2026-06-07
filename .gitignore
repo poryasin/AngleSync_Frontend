@@ -30,4 +30,12 @@ cmake-build-*/
 
 # IntelliJ build output
 out/
+anglesync/ios/build
+*.lock
+anglesync/linux
+anglesync/macos
+anglesync/windows
+anglesync/linux
+anglesync/macos
+anglesync/assets/videos
 anglesync/ios

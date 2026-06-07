@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:anglesync/src/core/config/backend_config.dart';
 
 //
 // MODELS
@@ -62,9 +63,9 @@ class SelectedFrame {
 
   factory SelectedFrame.fromJson(Map<String, dynamic> json) {
     return SelectedFrame(
-      frame: json['frame'],
-      time: (json['time'] as num).toDouble(),
-      risk: (json['risk'] as num).toDouble(),
+      frame: json['frame'] ?? 0,
+      time: (json['time'] as num?)?.toDouble() ?? 0,
+      risk: (json['risk'] as num?)?.toDouble() ?? 0,
     );
   }
 }
@@ -75,6 +76,7 @@ class AnalysisFeedback {
   final String correctiveCues;
   final String practicePlan;
   final String? error;
+  
 
   const AnalysisFeedback({
     required this.formSummary,
@@ -99,31 +101,77 @@ class AnalysisFeedback {
 
 class AnalysisResult {
   final double score;
+  final int scoreScale;
+  final bool canAnalyze;
+  final String status;
   final String riskLevel;
-  final SelectedFrame selectedFrame;
-  final AnalysisFeedback feedback;
+  final SelectedFrame? selectedFrame;
+  final AnalysisFeedback? feedback;
   final String exerciseName;
+  final List<double> riskScores;
+  final List<double> frameTimes;
+  final int highestRiskFrameIndex;
+  final String? highestRiskImageUrl;
 
   const AnalysisResult({
     required this.score,
+    required this.scoreScale,
+    required this.canAnalyze,
+    required this.status,
     required this.riskLevel,
     required this.selectedFrame,
     required this.feedback,
     required this.exerciseName,
+    this.riskScores = const [],
+    this.frameTimes = const [],
+    this.highestRiskFrameIndex = 0,
+    this.highestRiskImageUrl,
   });
 
-  factory AnalysisResult.fromJson(
-    Map<String, dynamic> json,
-    String exerciseName,
-  ) {
-    return AnalysisResult(
-      score: (json['score'] as num).toDouble(),
-      riskLevel: json['risk_level'],
-      selectedFrame: SelectedFrame.fromJson(json['selected_frame']),
-      feedback: AnalysisFeedback.fromJson(json['feedback']),
-      exerciseName: exerciseName,
-    );
-  }
+  bool get isExerciseMismatch => !canAnalyze || status == 'exercise_mismatch';
+
+factory AnalysisResult.fromJson(
+  Map<String, dynamic> json,
+  String exerciseName,
+) {
+  final selectedFrameJson = json['selected_frame'];
+  final feedbackJson = json['feedback'];
+
+  // ── แก้ตรงนี้ ──
+final graphData = json['graph_data'] is Map<String, dynamic>
+    ? json['graph_data'] as Map<String, dynamic>
+    : <String, dynamic>{};
+
+  final rawScores = graphData['risk_scores'];
+  final riskScores = rawScores is List
+      ? rawScores.map((e) => (e as num).toDouble()).toList()
+      : <double>[];
+
+  final rawTimes = graphData['frame_times'];
+  final frameTimes = rawTimes is List
+      ? rawTimes.map((e) => (e as num).toDouble()).toList()
+      : <double>[];
+
+  return AnalysisResult(
+    score: (json['score'] as num?)?.toDouble() ?? 0,
+    scoreScale: (json['score_scale'] as num?)?.toInt() ?? 10,
+    canAnalyze: json['can_analyze'] as bool? ?? true,
+    status: json['status'] as String? ?? 'completed',
+    riskLevel: json['risk_level'] as String? ?? '',
+    selectedFrame: selectedFrameJson is Map<String, dynamic>
+        ? SelectedFrame.fromJson(selectedFrameJson)
+        : null,
+    feedback: feedbackJson is Map<String, dynamic>
+        ? AnalysisFeedback.fromJson(feedbackJson)
+        : null,
+    exerciseName: exerciseName,
+    riskScores: riskScores,
+    frameTimes: frameTimes,
+    highestRiskFrameIndex:
+        (graphData['highest_risk_frame_index'] as num?)?.toInt() ?? 0,
+    highestRiskImageUrl: graphData['highest_risk_image_url'] as String?,
+  );
+}
 }
 
 //
@@ -162,21 +210,16 @@ class ErrorEvent extends AnalysisEvent {
 //
 
 class AnalysisService {
-  static const String _baseUrl = 'http://192.168.1.163:8000';
-
   Stream<AnalysisEvent> analyzeVideo({
     required File videoFile,
     required String exerciseName,
+    required int referenceVideoId,
   }) async* {
-    final uri = Uri.parse('$_baseUrl/analyze/stream');
+    final uri = Uri.parse('${BackendConfig.baseUrl}/analyze/stream');
 
     final request = http.MultipartRequest('POST', uri)
-      ..files.add(
-        await http.MultipartFile.fromPath(
-          'file', // ต้องตรงกับ FastAPI
-          videoFile.path,
-        ),
-      );
+      ..files.add(await http.MultipartFile.fromPath('file', videoFile.path))
+      ..fields['reference_video_id'] = referenceVideoId.toString();
 
     http.StreamedResponse response;
 
@@ -214,11 +257,7 @@ class AnalysisService {
         } else if (line.isEmpty &&
             currentEvent.isNotEmpty &&
             currentData.isNotEmpty) {
-          final event = _parseEvent(
-            currentEvent,
-            currentData,
-            exerciseName,
-          );
+          final event = _parseEvent(currentEvent, currentData, exerciseName);
 
           if (event != null) {
             yield event;
@@ -231,11 +270,7 @@ class AnalysisService {
     }
   }
 
-  AnalysisEvent? _parseEvent(
-    String type,
-    String data,
-    String exerciseName,
-  ) {
+  AnalysisEvent? _parseEvent(String type, String data, String exerciseName) {
     try {
       final json = jsonDecode(data);
 
@@ -250,12 +285,13 @@ class AnalysisService {
           return PartialEvent(AnalysisPartial.fromJson(json));
 
         case 'result':
-          return ResultEvent(
-            AnalysisResult.fromJson(json, exerciseName),
-          );
+        return ResultEvent(AnalysisResult.fromJson(json, exerciseName));
+
 
         case 'error':
           return ErrorEvent(json['message'] ?? 'Unknown error');
+
+          
 
         default:
           return null;
@@ -268,7 +304,7 @@ class AnalysisService {
   Future<bool> isServerOnline() async {
     try {
       final response = await http
-          .get(Uri.parse(_baseUrl))
+          .get(Uri.parse(BackendConfig.baseUrl))
           .timeout(const Duration(seconds: 3));
 
       return response.statusCode == 200;
@@ -286,3 +322,4 @@ class AnalysisException implements Exception {
   @override
   String toString() => message;
 }
+
