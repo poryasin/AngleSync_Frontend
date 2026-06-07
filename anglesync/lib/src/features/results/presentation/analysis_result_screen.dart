@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/service/analysis_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../widgets/risk_graph.dart';
 
 class AnalysisResultScreen extends StatelessWidget {
   final Stream<AnalysisEvent> analysisStream;
 
-  const AnalysisResultScreen({
-    super.key,
-    required this.analysisStream,
-  });
+  const AnalysisResultScreen({super.key, required this.analysisStream});
 
   @override
   Widget build(BuildContext context) {
@@ -52,20 +50,18 @@ class AnalysisResultScreen extends StatelessWidget {
             // ERROR
             //
             if (event is ErrorEvent) {
-              return _buildError(
-                context,
-                event.message,
-              );
+              return _buildError(context, event.message);
             }
 
             //
             // RESULT
             //
             if (event is ResultEvent) {
-              return _buildResult(
-                context,
-                event.result,
-              );
+              if (event.result.isExerciseMismatch) {
+                return _buildMismatch(context, event.result);
+              }
+
+              return _buildResult(context, event.result);
             }
 
             return _buildLoading(context);
@@ -80,20 +76,14 @@ class AnalysisResultScreen extends StatelessWidget {
   //
   Widget _buildLoading(BuildContext context) {
     return const Center(
-      child: CircularProgressIndicator(
-        color: AppTheme.green,
-      ),
+      child: CircularProgressIndicator(color: AppTheme.green),
     );
   }
 
   //
   // PROGRESS
   //
-  Widget _buildProgress(
-    BuildContext context,
-    String message,
-    int percent,
-  ) {
+  Widget _buildProgress(BuildContext context, String message, int percent) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7F4),
       body: SafeArea(
@@ -151,10 +141,9 @@ class AnalysisResultScreen extends StatelessWidget {
   //
   // RESULT
   //
-  Widget _buildResult(
-    BuildContext context,
-    AnalysisResult result,
-  ) {
+  Widget _buildResult(BuildContext context, AnalysisResult result) {
+    final feedback = result.feedback;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7F4),
       body: SafeArea(
@@ -168,43 +157,48 @@ class AnalysisResultScreen extends StatelessWidget {
             // BODY
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  24,
-                  20,
-                  32,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildScoreCard(result),
 
                     const SizedBox(height: 20),
+                    if (result.riskScores.isNotEmpty)
+                    RiskGraph(
+                      riskScores: result.riskScores,
+                      frameTimes: result.frameTimes,
+                      highestRiskFrameIndex: result.highestRiskFrameIndex,
+                      highestRiskImageUrl: result.highestRiskImageUrl,
+                    ),
+
+                  if (result.riskScores.isNotEmpty)
+                    const SizedBox(height: 20),
 
                     _buildFeedbackCard(
                       title: "Form Summary",
-                      content: result.feedback.formSummary,
+                      content: feedback?.formSummary ?? '',
                     ),
 
                     const SizedBox(height: 20),
 
                     _buildFeedbackCard(
                       title: "Injury Risk",
-                      content: result.feedback.injuryRisk,
+                      content: feedback?.injuryRisk ?? '',
                     ),
 
                     const SizedBox(height: 20),
 
                     _buildFeedbackCard(
                       title: "Corrective Cues",
-                      content: result.feedback.correctiveCues,
+                      content: feedback?.correctiveCues ?? '',
                     ),
 
                     const SizedBox(height: 20),
 
                     _buildFeedbackCard(
                       title: "Practice Plan",
-                      content: result.feedback.practicePlan,
+                      content: feedback?.practicePlan ?? '',
                     ),
 
                     const SizedBox(height: 32),
@@ -238,10 +232,7 @@ class AnalysisResultScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        icon: const Icon(
-                          Icons.save,
-                          color: Colors.white,
-                        ),
+                        icon: const Icon(Icons.save, color: Colors.white),
                         label: const Text(
                           "Save Result",
                           style: TextStyle(
@@ -269,7 +260,9 @@ class AnalysisResultScreen extends StatelessWidget {
   // SCORE CARD
   //
   Widget _buildScoreCard(AnalysisResult result) {
-    final score = result.score.clamp(0, 100);
+    final scale = result.scoreScale <= 0 ? 100 : result.scoreScale;
+    final score = result.score.clamp(0, scale).toDouble();
+    final progress = score / scale;
 
     return Container(
       width: double.infinity,
@@ -357,9 +350,9 @@ class AnalysisResultScreen extends StatelessWidget {
                   ),
                 ),
 
-                const TextSpan(
-                  text: "/10",
-                  style: TextStyle(
+                TextSpan(
+                  text: "/$scale",
+                  style: const TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w400,
                     color: Color(0xFF667085),
@@ -377,12 +370,10 @@ class AnalysisResultScreen extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: LinearProgressIndicator(
-              value: score / 10,
+              value: progress,
               minHeight: 14,
               backgroundColor: const Color(0xFFEAEAEA),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Colors.green,
-              ),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
             ),
           ),
         ],
@@ -393,10 +384,7 @@ class AnalysisResultScreen extends StatelessWidget {
   //
   // FEEDBACK CARD
   //
-  Widget _buildFeedbackCard({
-    required String title,
-    required String content,
-  }) {
+  Widget _buildFeedbackCard({required String title, required String content}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -409,16 +397,13 @@ class AnalysisResultScreen extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
 
           const SizedBox(height: 14),
 
           Text(
-            content,
+            content.isEmpty ? 'No feedback provided.' : content,
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey.shade700,
@@ -430,13 +415,91 @@ class AnalysisResultScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildMismatch(BuildContext context, AnalysisResult result) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0F7F4),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _appBar(context),
+            const Divider(height: 1),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.orange,
+                          size: 44,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Exercise mismatch',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'This video does not match ${result.exerciseName}. Please upload a video for the selected exercise.',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 16,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.green,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: const Text(
+                              'Choose another video',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   //
   // ERROR
   //
-  Widget _buildError(
-    BuildContext context,
-    String error,
-  ) {
+  Widget _buildError(BuildContext context, String error) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7F4),
       body: SafeArea(
@@ -452,10 +515,7 @@ class AnalysisResultScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(24),
                   child: Text(
                     error,
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(color: Colors.red, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -472,12 +532,7 @@ class AnalysisResultScreen extends StatelessWidget {
   //
   Widget _appBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        12,
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Align(
         alignment: Alignment.centerLeft,
         child: GestureDetector(

@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
 
-class RiskGraph extends StatefulWidget {
-  const RiskGraph({super.key});
+class RiskGraph extends StatelessWidget {
+  final List<double> riskScores;
+  final List<double> frameTimes;
+  final int highestRiskFrameIndex;
+  final String? highestRiskImageUrl;
 
-  @override
-  State<RiskGraph> createState() => _RiskGraphState();
-}
+  const RiskGraph({
+    super.key,
+    required this.riskScores,
+    required this.frameTimes,
+    required this.highestRiskFrameIndex,
+    this.highestRiskImageUrl,
+  });
 
-class _RiskGraphState extends State<RiskGraph> {
-  final List<double> _riskData = [
-    12, 10, 15, 13, 18, 14, 20, 16, 22, 18,
-    25, 30, 35, 38, 42, 46, 50, 47, 44, 48,
-    45, 42, 38, 35, 30, 25, 20, 18, 15, 18,
-    14, 16,
-  ];
+  List<double> get _riskData => riskScores;
 
-  int _selectedIndex = 16;
-  final double _totalDuration = 7.8;
+  double get _totalDuration =>
+      frameTimes.isNotEmpty ? frameTimes.last : 0.0;
 
-  @override
-  void initState() {
-    super.initState();
-  }
+  double get _peakTime =>
+      highestRiskFrameIndex < frameTimes.length
+          ? frameTimes[highestRiskFrameIndex]
+          : 0.0;
+
+  double get _peakRisk =>
+      riskScores.isNotEmpty ? riskScores[highestRiskFrameIndex] : 0.0;
 
   int get _peakIndex {
     double max = 0;
@@ -35,25 +39,12 @@ class _RiskGraphState extends State<RiskGraph> {
     return idx;
   }
 
-  double get _selectedTime =>
-      (_selectedIndex / (_riskData.length - 1)) * _totalDuration;
-
-  double get _selectedRisk => _riskData[_selectedIndex];
-
-  void _resolveIndex(double dx, double totalWidth) {
-    const leftPad = 40.0;
-    const rightPad = 16.0;
-    final graphWidth = totalWidth - leftPad - rightPad;
-    final relX = (dx - leftPad).clamp(0.0, graphWidth);
-    final index =
-        ((relX / graphWidth) * (_riskData.length - 1)).round();
-    setState(() {
-      _selectedIndex = index.clamp(0, _riskData.length - 1);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_riskData.isEmpty) {
+      return const Center(child: Text("No risk data"));
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -94,28 +85,17 @@ class _RiskGraphState extends State<RiskGraph> {
           ),
           const SizedBox(height: 16),
 
-          // ── Graph ──
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return GestureDetector(
-                onTapDown: (d) =>
-                    _resolveIndex(d.localPosition.dx, constraints.maxWidth),
-                onHorizontalDragUpdate: (d) =>
-                    _resolveIndex(d.localPosition.dx, constraints.maxWidth),
-                child: SizedBox(
-                  height: 200,
-                  width: constraints.maxWidth,
-                  child: CustomPaint(
-                    painter: _RiskChartPainter(
-                      data: _riskData,
-                      selectedIndex: _selectedIndex,
-                      peakIndex: _peakIndex,
-                      peakValue: _riskData[_peakIndex],
-                    ),
-                  ),
-                ),
-              );
-            },
+          // ── Graph (ไม่มี GestureDetector แล้ว) ──
+          SizedBox(
+            height: 200,
+            child: CustomPaint(
+              painter: _RiskChartPainter(
+                data: _riskData,
+                peakIndex: _peakIndex,
+                peakValue: _riskData[_peakIndex],
+              ),
+              size: Size.infinite,
+            ),
           ),
 
           // ── X-axis labels ──
@@ -125,22 +105,11 @@ class _RiskGraphState extends State<RiskGraph> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("0s",
-                    style:
-                        TextStyle(fontSize: 12, color: Color(0xFF667085))),
-                Text("${_totalDuration}s",
+                    style: TextStyle(fontSize: 12, color: Color(0xFF667085))),
+                Text("${_totalDuration.toStringAsFixed(1)}s",
                     style: const TextStyle(
                         fontSize: 12, color: Color(0xFF667085))),
               ],
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // ── Hint ──
-          const Center(
-            child: Text(
-              "Tap any point on the graph to inspect that frame",
-              style: TextStyle(fontSize: 13, color: Color(0xFF667085)),
-              textAlign: TextAlign.center,
             ),
           ),
 
@@ -148,19 +117,32 @@ class _RiskGraphState extends State<RiskGraph> {
           const Divider(color: Color(0xFFF0F0F0), height: 1),
           const SizedBox(height: 16),
 
-          // ── Selected Frame label ──
-          const Text(
-            "SELECTED FRAME",
-            style: TextStyle(
-              fontSize: 12,
-              color: Color(0xFF667085),
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.2,
-            ),
+          // ── Highest risk label ──
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                "HIGHEST RISK FRAME",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF667085),
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
-            "t = ${_selectedTime.toStringAsFixed(2)}s · risk ${_selectedRisk.toInt()}/100",
+            "t = ${_peakTime.toStringAsFixed(2)}s · risk ${_peakRisk.toInt()}/100",
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
@@ -170,48 +152,66 @@ class _RiskGraphState extends State<RiskGraph> {
           ),
           const SizedBox(height: 16),
 
-          // ── Frame image placeholder ──
+          // ── Frame image ──
           Container(
             width: double.infinity,
-            height: 200,
+            height: 220,
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Center(
-              child: Icon(Icons.play_circle_outline,
-                  color: Colors.white38, size: 48),
-            ),
+            child: highestRiskImageUrl != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.network(
+                      highestRiskImageUrl!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(
+                              color: Colors.white38),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image,
+                            color: Colors.white38, size: 48),
+                      ),
+                    ),
+                  )
+                : const Center(
+                    child: Icon(Icons.image_not_supported_outlined,
+                        color: Colors.white38, size: 48),
+                  ),
           ),
+
           const SizedBox(height: 12),
 
-          // ── Biggest deviation ──
+          // ── Caption ──
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F8F8),
-              borderRadius: BorderRadius.circular(16),
+              color: const Color(0xFFFFF3F3),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFFFCDD2)),
             ),
-            child: RichText(
-              text: const TextSpan(
-                style:
-                    TextStyle(fontSize: 15, color: Color(0xFF1A1A1A)),
-                children: [
-                  TextSpan(
-                    text: "Biggest deviation here: ",
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  TextSpan(
-                    text: "Left Knee — off by 6°",
-                    style: TextStyle(
-                      color: Color(0xFF667085),
-                      fontWeight: FontWeight.w400,
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    color: Color(0xFFE53935), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Most risky moment detected at ${_peakTime.toStringAsFixed(2)}s",
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFFE53935),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -220,16 +220,14 @@ class _RiskGraphState extends State<RiskGraph> {
   }
 }
 
-// ── Custom Painter ──
+// ── Custom Painter — ไม่มี selectedIndex แล้ว ──
 class _RiskChartPainter extends CustomPainter {
   final List<double> data;
-  final int selectedIndex;
   final int peakIndex;
   final double peakValue;
 
   const _RiskChartPainter({
     required this.data,
-    required this.selectedIndex,
     required this.peakIndex,
     required this.peakValue,
   });
@@ -252,7 +250,7 @@ class _RiskChartPainter extends CustomPainter {
     final graphH = size.height - topPad - bottomPad;
     final bottomY = topPad + graphH;
 
-    // ── Gridlines & Y labels ──
+    // ── Gridlines ──
     final gridPaint = Paint()
       ..color = const Color(0xFFE5E5E5)
       ..strokeWidth = 1;
@@ -261,7 +259,6 @@ class _RiskChartPainter extends CustomPainter {
       final y = topPad + graphH * (1 - yVal / 100);
       _drawDashed(canvas, Offset(leftPad, y),
           Offset(size.width - rightPad, y), gridPaint);
-
       final tp = TextPainter(
         text: TextSpan(
           text: "$yVal",
@@ -272,17 +269,13 @@ class _RiskChartPainter extends CustomPainter {
       tp.paint(canvas, Offset(leftPad - tp.width - 6, y - tp.height / 2));
     }
 
-    // ── Build points list ──
     final pts = List.generate(data.length, (i) => _point(i, size));
 
-    // ── Filled area ──
+    // ── Fill ──
     final fillPath = Path()..moveTo(pts.first.dx, bottomY);
-    for (final p in pts) {
-      fillPath.lineTo(p.dx, p.dy);
-    }
+    for (final p in pts) fillPath.lineTo(p.dx, p.dy);
     fillPath.lineTo(pts.last.dx, bottomY);
     fillPath.close();
-
     canvas.drawPath(
       fillPath,
       Paint()
@@ -311,20 +304,7 @@ class _RiskChartPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round,
     );
 
-    // ── Dots ──
-    for (final p in pts) {
-      canvas.drawCircle(p, 5,
-          Paint()
-            ..color = Colors.white
-            ..style = PaintingStyle.fill);
-      canvas.drawCircle(p, 5,
-          Paint()
-            ..color = Colors.green
-            ..strokeWidth = 2
-            ..style = PaintingStyle.stroke);
-    }
-
-    // ── Peak dashed vertical ──
+    // ── Peak dashed line ──
     final peakPt = pts[peakIndex];
     _drawDashed(
       canvas,
@@ -349,30 +329,22 @@ class _RiskChartPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    peakTp.paint(
-        canvas, Offset(peakPt.dx - peakTp.width / 2, 4));
+    peakTp.paint(canvas, Offset(peakPt.dx - peakTp.width / 2, 4));
 
-    // ── Selected dot (red, bigger) ──
-    final selPt = pts[selectedIndex];
-    canvas.drawCircle(selPt, 8,
+    // ── Peak dot ──
+    canvas.drawCircle(peakPt, 8,
         Paint()
           ..color = Colors.red
           ..style = PaintingStyle.fill);
-    canvas.drawCircle(selPt, 8,
+    canvas.drawCircle(peakPt, 8,
         Paint()
           ..color = Colors.white
           ..strokeWidth = 2.5
           ..style = PaintingStyle.stroke);
   }
 
-  void _drawDashed(
-    Canvas canvas,
-    Offset start,
-    Offset end,
-    Paint paint, {
-    double dashLen = 5,
-    double gapLen = 4,
-  }) {
+  void _drawDashed(Canvas canvas, Offset start, Offset end, Paint paint,
+      {double dashLen = 5, double gapLen = 4}) {
     final dx = end.dx - start.dx;
     final dy = end.dy - start.dy;
     final dist = (end - start).distance;
@@ -391,7 +363,5 @@ class _RiskChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RiskChartPainter old) =>
-      old.selectedIndex != selectedIndex ||
-      old.peakIndex != peakIndex;
+  bool shouldRepaint(_RiskChartPainter old) => old.peakIndex != peakIndex;
 }
