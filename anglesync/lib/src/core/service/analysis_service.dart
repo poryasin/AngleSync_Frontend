@@ -1,15 +1,10 @@
-// lib/core/services/analysis_service.dart
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:anglesync/src/core/config/backend_config.dart';
 
-//
 // MODELS
-//
-
 class AnalysisStep {
   final String step;
   final String message;
@@ -76,7 +71,6 @@ class AnalysisFeedback {
   final String correctiveCues;
   final String practicePlan;
   final String? error;
-  
 
   const AnalysisFeedback({
     required this.formSummary,
@@ -130,54 +124,50 @@ class AnalysisResult {
 
   bool get isExerciseMismatch => !canAnalyze || status == 'exercise_mismatch';
 
-factory AnalysisResult.fromJson(
-  Map<String, dynamic> json,
-  String exerciseName,
-) {
-  final selectedFrameJson = json['selected_frame'];
-  final feedbackJson = json['feedback'];
+  factory AnalysisResult.fromJson(
+    Map<String, dynamic> json,
+    String exerciseName,
+  ) {
+    final selectedFrameJson = json['selected_frame'];
+    final feedbackJson = json['feedback'];
 
-  // ── แก้ตรงนี้ ──
-final graphData = json['graph_data'] is Map<String, dynamic>
-    ? json['graph_data'] as Map<String, dynamic>
-    : <String, dynamic>{};
+    final graphData = json['graph_data'] is Map<String, dynamic>
+        ? json['graph_data'] as Map<String, dynamic>
+        : <String, dynamic>{};
 
-  final rawScores = graphData['risk_scores'];
-  final riskScores = rawScores is List
-      ? rawScores.map((e) => (e as num).toDouble()).toList()
-      : <double>[];
+    final rawScores = graphData['risk_scores'];
+    final riskScores = rawScores is List
+        ? rawScores.map((e) => (e as num).toDouble()).toList()
+        : <double>[];
 
-  final rawTimes = graphData['frame_times'];
-  final frameTimes = rawTimes is List
-      ? rawTimes.map((e) => (e as num).toDouble()).toList()
-      : <double>[];
+    final rawTimes = graphData['frame_times'];
+    final frameTimes = rawTimes is List
+        ? rawTimes.map((e) => (e as num).toDouble()).toList()
+        : <double>[];
 
-  return AnalysisResult(
-    score: (json['score'] as num?)?.toDouble() ?? 0,
-    scoreScale: (json['score_scale'] as num?)?.toInt() ?? 10,
-    canAnalyze: json['can_analyze'] as bool? ?? true,
-    status: json['status'] as String? ?? 'completed',
-    riskLevel: json['risk_level'] as String? ?? '',
-    selectedFrame: selectedFrameJson is Map<String, dynamic>
-        ? SelectedFrame.fromJson(selectedFrameJson)
-        : null,
-    feedback: feedbackJson is Map<String, dynamic>
-        ? AnalysisFeedback.fromJson(feedbackJson)
-        : null,
-    exerciseName: exerciseName,
-    riskScores: riskScores,
-    frameTimes: frameTimes,
-    highestRiskFrameIndex:
-        (graphData['highest_risk_frame_index'] as num?)?.toInt() ?? 0,
-    highestRiskImageUrl: graphData['highest_risk_image_url'] as String?,
-  );
+    return AnalysisResult(
+      score: (json['score'] as num?)?.toDouble() ?? 0,
+      scoreScale: (json['score_scale'] as num?)?.toInt() ?? 10,
+      canAnalyze: json['can_analyze'] as bool? ?? true,
+      status: json['status'] as String? ?? 'completed',
+      riskLevel: json['risk_level'] as String? ?? '',
+      selectedFrame: selectedFrameJson is Map<String, dynamic>
+          ? SelectedFrame.fromJson(selectedFrameJson)
+          : null,
+      feedback: feedbackJson is Map<String, dynamic>
+          ? AnalysisFeedback.fromJson(feedbackJson)
+          : null,
+      exerciseName: exerciseName,
+      riskScores: riskScores,
+      frameTimes: frameTimes,
+      highestRiskFrameIndex:
+          (graphData['highest_risk_frame_index'] as num?)?.toInt() ?? 0,
+      highestRiskImageUrl: graphData['highest_risk_image_url'] as String?,
+    );
+  }
 }
-}
 
-//
 // EVENTS
-//
-
 abstract class AnalysisEvent {}
 
 class StepEvent extends AnalysisEvent {
@@ -205,10 +195,7 @@ class ErrorEvent extends AnalysisEvent {
   ErrorEvent(this.message);
 }
 
-//
 // SERVICE
-//
-
 class AnalysisService {
   Stream<AnalysisEvent> analyzeVideo({
     required File videoFile,
@@ -285,13 +272,10 @@ class AnalysisService {
           return PartialEvent(AnalysisPartial.fromJson(json));
 
         case 'result':
-        return ResultEvent(AnalysisResult.fromJson(json, exerciseName));
-
+          return ResultEvent(AnalysisResult.fromJson(json, exerciseName));
 
         case 'error':
           return ErrorEvent(json['message'] ?? 'Unknown error');
-
-          
 
         default:
           return null;
@@ -322,4 +306,3 @@ class AnalysisException implements Exception {
   @override
   String toString() => message;
 }
-

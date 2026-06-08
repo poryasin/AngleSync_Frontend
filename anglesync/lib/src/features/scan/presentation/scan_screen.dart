@@ -2,14 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/service/exercise_service.dart';
 
 import '../domain/exercise_item.dart';
 import '../domain/exercise_detail.dart';
-
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -229,7 +227,7 @@ class _ScanScreenState extends State<ScanScreen> {
                     controller: _searchController,
                     onChanged: _onSearch,
                     decoration: InputDecoration(
-                      hintText: 'Search exercises...',
+                      hintText: 'Search exercises',
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 15,
@@ -487,10 +485,7 @@ class _VideoFrameThumbnailState extends State<_VideoFrameThumbnail> {
     final controller = _controller;
 
     if (_hasError || controller == null || !controller.value.isInitialized) {
-      return _ThumbnailPlaceholder(
-        item: widget.item,
-        showSpinner: !_hasError,
-      );
+      return _ThumbnailPlaceholder(item: widget.item, showSpinner: !_hasError);
     }
 
     final size = controller.value.size;

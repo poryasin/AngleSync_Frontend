@@ -39,8 +39,11 @@ class _AnalysisDetailsState extends State<AnalysisDetails> {
                   color: Color(0xFFE8F5E9),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.auto_awesome,
-                    color: Colors.green, size: 20),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.green,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -71,7 +74,9 @@ class _AnalysisDetailsState extends State<AnalysisDetails> {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0F0F0),
                   borderRadius: BorderRadius.circular(20),
@@ -106,8 +111,11 @@ class _AnalysisDetailsState extends State<AnalysisDetails> {
                       color: const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.assignment_outlined,
-                        color: Colors.green, size: 17),
+                    child: const Icon(
+                      Icons.assignment_outlined,
+                      color: Colors.green,
+                      size: 17,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -166,8 +174,11 @@ class _AnalysisDetailsState extends State<AnalysisDetails> {
                       color: const Color(0xFFFFECEC),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.shield_outlined,
-                        color: Color(0xFFE53935), size: 17),
+                    child: const Icon(
+                      Icons.shield_outlined,
+                      color: Color(0xFFE53935),
+                      size: 17,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -341,8 +352,7 @@ class _AnalysisDetailsState extends State<AnalysisDetails> {
           ),
           if (isExpanded)
             Padding(
-              padding:
-                  const EdgeInsets.only(left: 18, right: 18, bottom: 18),
+              padding: const EdgeInsets.only(left: 18, right: 18, bottom: 18),
               child: Column(
                 children: [
                   const Divider(color: Color(0xFFF0F0F0), height: 1),
@@ -363,11 +373,7 @@ class _FixItem extends StatelessWidget {
   final IconData icon;
   final bool isRisk;
 
-  const _FixItem({
-    required this.text,
-    required this.icon,
-    this.isRisk = false,
-  });
+  const _FixItem({required this.text, required this.icon, this.isRisk = false});
 
   @override
   Widget build(BuildContext context) {
@@ -389,9 +395,7 @@ class _FixItem extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: isRisk
-                  ? const Color(0xFFE53935)
-                  : const Color(0xFF1A1A1A),
+              color: isRisk ? const Color(0xFFE53935) : const Color(0xFF1A1A1A),
               height: 1.4,
             ),
           ),
@@ -406,19 +410,14 @@ class _RiskTag extends StatelessWidget {
   final String label;
   final bool isHighlight;
 
-  const _RiskTag({
-    required this.label,
-    this.isHighlight = false,
-  });
+  const _RiskTag({required this.label, this.isHighlight = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: isHighlight
-            ? const Color(0xFFFFECEC)
-            : const Color(0xFFF0F0F0),
+        color: isHighlight ? const Color(0xFFFFECEC) : const Color(0xFFF0F0F0),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -508,7 +507,11 @@ class _PracticePlanContent extends StatelessWidget {
       {
         "phase": "Main",
         "duration": "20 min",
-        "items": ["3 × 10 goblet squat", "3 × 8 pause squat", "2 × 12 split squat"],
+        "items": [
+          "3 × 10 goblet squat",
+          "3 × 8 pause squat",
+          "2 × 12 split squat",
+        ],
       },
       {
         "phase": "Cooldown",

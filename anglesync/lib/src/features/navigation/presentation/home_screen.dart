@@ -5,11 +5,9 @@ import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_bottom_nav_bar.dart';
 import '../../history/presentation/history_screen.dart';
 
-
 class HomeScreen extends StatelessWidget {
   final VoidCallback? onViewAllHistory;
   const HomeScreen({super.key, this.onViewAllHistory});
-
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +39,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 32),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
-                child: _RecentScansSection(onViewAllHistory: onViewAllHistory,),
+                child: _RecentScansSection(onViewAllHistory: onViewAllHistory),
               ),
               const SizedBox(height: 32),
             ],
@@ -215,15 +213,15 @@ class _ScanCalendarCard extends StatelessWidget {
                   SizedBox(height: 2),
                   Text(
                     'Days you scanned this month',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.green.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -374,9 +372,7 @@ class _DayCell extends StatelessWidget {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: isScanned
-            ? AppTheme.green
-            : Colors.grey.shade100,
+        color: isScanned ? AppTheme.green : Colors.grey.shade100,
         shape: BoxShape.circle,
         border: isToday && !isScanned
             ? Border.all(color: AppTheme.green, width: 2)
@@ -391,8 +387,8 @@ class _DayCell extends StatelessWidget {
             color: isScanned
                 ? Colors.white
                 : isToday
-                    ? AppTheme.green
-                    : Colors.grey.shade500,
+                ? AppTheme.green
+                : Colors.grey.shade500,
           ),
         ),
       ),
@@ -457,7 +453,6 @@ class _RecentScansSection extends StatelessWidget {
   final VoidCallback? onViewAllHistory;
   const _RecentScansSection({this.onViewAllHistory});
 
-
   static const List<Map<String, dynamic>> _recentScans = [
     {
       'title': 'Morning squat check',
@@ -504,15 +499,12 @@ class _RecentScansSection extends StatelessWidget {
                 SizedBox(height: 2),
                 Text(
                   'Jump back into your latest progress.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
                 ),
               ],
             ),
             GestureDetector(
-            onTap: onViewAllHistory,
+              onTap: onViewAllHistory,
               child: const Row(
                 children: [
                   Text(
@@ -537,15 +529,17 @@ class _RecentScansSection extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Scan items
-        ..._recentScans.map((scan) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _RecentScanItem(
-                title: scan['title'] as String,
-                exercise: scan['exercise'] as String,
-                time: scan['time'] as String,
-                score: scan['score'] as int,
-              ),
-            )),
+        ..._recentScans.map(
+          (scan) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _RecentScanItem(
+              title: scan['title'] as String,
+              exercise: scan['exercise'] as String,
+              time: scan['time'] as String,
+              score: scan['score'] as int,
+            ),
+          ),
+        ),
       ],
     );
   }

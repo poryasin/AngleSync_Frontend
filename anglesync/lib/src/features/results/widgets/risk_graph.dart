@@ -16,13 +16,11 @@ class RiskGraph extends StatelessWidget {
 
   List<double> get _riskData => riskScores;
 
-  double get _totalDuration =>
-      frameTimes.isNotEmpty ? frameTimes.last : 0.0;
+  double get _totalDuration => frameTimes.isNotEmpty ? frameTimes.last : 0.0;
 
-  double get _peakTime =>
-      highestRiskFrameIndex < frameTimes.length
-          ? frameTimes[highestRiskFrameIndex]
-          : 0.0;
+  double get _peakTime => highestRiskFrameIndex < frameTimes.length
+      ? frameTimes[highestRiskFrameIndex]
+      : 0.0;
 
   double get _peakRisk =>
       riskScores.isNotEmpty ? riskScores[highestRiskFrameIndex] : 0.0;
@@ -76,10 +74,7 @@ class RiskGraph extends StatelessWidget {
               ),
               Text(
                 "${_riskData.length} samples",
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF667085),
-                ),
+                style: const TextStyle(fontSize: 14, color: Color(0xFF667085)),
               ),
             ],
           ),
@@ -104,11 +99,17 @@ class RiskGraph extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("0s",
-                    style: TextStyle(fontSize: 12, color: Color(0xFF667085))),
-                Text("${_totalDuration.toStringAsFixed(1)}s",
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF667085))),
+                const Text(
+                  "0s",
+                  style: TextStyle(fontSize: 12, color: Color(0xFF667085)),
+                ),
+                Text(
+                  "${_totalDuration.toStringAsFixed(1)}s",
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF667085),
+                  ),
+                ),
               ],
             ),
           ),
@@ -170,18 +171,25 @@ class RiskGraph extends StatelessWidget {
                         if (progress == null) return child;
                         return const Center(
                           child: CircularProgressIndicator(
-                              color: Colors.white38),
+                            color: Colors.white38,
+                          ),
                         );
                       },
                       errorBuilder: (_, __, ___) => const Center(
-                        child: Icon(Icons.broken_image,
-                            color: Colors.white38, size: 48),
+                        child: Icon(
+                          Icons.broken_image,
+                          color: Colors.white38,
+                          size: 48,
+                        ),
                       ),
                     ),
                   )
                 : const Center(
-                    child: Icon(Icons.image_not_supported_outlined,
-                        color: Colors.white38, size: 48),
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: Colors.white38,
+                      size: 48,
+                    ),
                   ),
           ),
 
@@ -198,8 +206,11 @@ class RiskGraph extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded,
-                    color: Color(0xFFE53935), size: 18),
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFE53935),
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -257,8 +268,12 @@ class _RiskChartPainter extends CustomPainter {
 
     for (final yVal in [0, 25, 50, 75, 100]) {
       final y = topPad + graphH * (1 - yVal / 100);
-      _drawDashed(canvas, Offset(leftPad, y),
-          Offset(size.width - rightPad, y), gridPaint);
+      _drawDashed(
+        canvas,
+        Offset(leftPad, y),
+        Offset(size.width - rightPad, y),
+        gridPaint,
+      );
       final tp = TextPainter(
         text: TextSpan(
           text: "$yVal",
@@ -282,10 +297,7 @@ class _RiskChartPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.red.withOpacity(0.25),
-            Colors.red.withOpacity(0.04),
-          ],
+          colors: [Colors.red.withOpacity(0.25), Colors.red.withOpacity(0.04)],
         ).createShader(Rect.fromLTWH(0, topPad, size.width, graphH)),
     );
 
@@ -332,19 +344,31 @@ class _RiskChartPainter extends CustomPainter {
     peakTp.paint(canvas, Offset(peakPt.dx - peakTp.width / 2, 4));
 
     // ── Peak dot ──
-    canvas.drawCircle(peakPt, 8,
-        Paint()
-          ..color = Colors.red
-          ..style = PaintingStyle.fill);
-    canvas.drawCircle(peakPt, 8,
-        Paint()
-          ..color = Colors.white
-          ..strokeWidth = 2.5
-          ..style = PaintingStyle.stroke);
+    canvas.drawCircle(
+      peakPt,
+      8,
+      Paint()
+        ..color = Colors.red
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawCircle(
+      peakPt,
+      8,
+      Paint()
+        ..color = Colors.white
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke,
+    );
   }
 
-  void _drawDashed(Canvas canvas, Offset start, Offset end, Paint paint,
-      {double dashLen = 5, double gapLen = 4}) {
+  void _drawDashed(
+    Canvas canvas,
+    Offset start,
+    Offset end,
+    Paint paint, {
+    double dashLen = 5,
+    double gapLen = 4,
+  }) {
     final dx = end.dx - start.dx;
     final dy = end.dy - start.dy;
     final dist = (end - start).distance;
@@ -355,8 +379,10 @@ class _RiskChartPainter extends CustomPainter {
       final t1 = ((i * step) + dashLen) / dist;
       canvas.drawLine(
         Offset(start.dx + dx * t0, start.dy + dy * t0),
-        Offset(start.dx + dx * t1.clamp(0.0, 1.0),
-            start.dy + dy * t1.clamp(0.0, 1.0)),
+        Offset(
+          start.dx + dx * t1.clamp(0.0, 1.0),
+          start.dy + dy * t1.clamp(0.0, 1.0),
+        ),
         paint,
       );
     }

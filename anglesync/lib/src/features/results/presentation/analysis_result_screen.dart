@@ -7,8 +7,13 @@ import '../widgets/risk_graph.dart';
 
 class AnalysisResultScreen extends StatelessWidget {
   final Stream<AnalysisEvent> analysisStream;
+  final VoidCallback? onMismatch;
 
-  const AnalysisResultScreen({super.key, required this.analysisStream});
+  const AnalysisResultScreen({
+    super.key,
+    required this.analysisStream,
+    this.onMismatch,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -165,15 +170,15 @@ class AnalysisResultScreen extends StatelessWidget {
 
                     const SizedBox(height: 20),
                     if (result.riskScores.isNotEmpty)
-                    RiskGraph(
-                      riskScores: result.riskScores,
-                      frameTimes: result.frameTimes,
-                      highestRiskFrameIndex: result.highestRiskFrameIndex,
-                      highestRiskImageUrl: result.highestRiskImageUrl,
-                    ),
+                      RiskGraph(
+                        riskScores: result.riskScores,
+                        frameTimes: result.frameTimes,
+                        highestRiskFrameIndex: result.highestRiskFrameIndex,
+                        highestRiskImageUrl: result.highestRiskImageUrl,
+                      ),
 
-                  if (result.riskScores.isNotEmpty)
-                    const SizedBox(height: 20),
+                    if (result.riskScores.isNotEmpty)
+                      const SizedBox(height: 20),
 
                     _buildFeedbackCard(
                       title: "Form Summary",
@@ -466,7 +471,10 @@ class AnalysisResultScreen extends StatelessWidget {
                           width: double.infinity,
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () {
+                              onMismatch?.call(); // clear video in UploadScreen
+                              Navigator.pop(context); // back to UploadScreen
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.green,
                               elevation: 0,
@@ -527,9 +535,6 @@ class AnalysisResultScreen extends StatelessWidget {
     );
   }
 
-  //
-  // APP BAR
-  //
   Widget _appBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),

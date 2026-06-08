@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/scan_history_item.dart';
 
-
-
-
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
@@ -32,51 +29,46 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
+    return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
-      child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header
-                    const Text(
-                      'Recent scans',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.textDark,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Your latest posture analysis sessions.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              const Text(
+                'Recent scans',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textDark,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Your latest posture analysis sessions.',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+              ),
+              const SizedBox(height: 24),
 
-                    // Scan list
-                    ..._mockScans.map(
-                      (scan) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _ScanHistoryCard(item: scan),
-                      ),
-                    ),
-                  ],
-        )
-    ),
-  ),
+              // Scan list
+              ..._mockScans.map(
+                (scan) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ScanHistoryCard(item: scan),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-  
+  }
 }
-}
-
 
 // Scan History Card
 class _ScanHistoryCard extends StatelessWidget {
@@ -166,11 +158,7 @@ class _ScanHistoryCard extends StatelessWidget {
           // Eye + Arrow icons
           Row(
             children: [
-              Icon(
-                CupertinoIcons.eye,
-                size: 20,
-                color: AppTheme.green,
-              ),
+              Icon(CupertinoIcons.eye, size: 20, color: AppTheme.green),
               const SizedBox(width: 8),
               Icon(
                 CupertinoIcons.chevron_right,

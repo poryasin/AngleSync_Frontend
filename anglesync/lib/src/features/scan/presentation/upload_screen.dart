@@ -22,9 +22,6 @@ class UploadScreen extends StatefulWidget {
 }
 
 class _UploadScreenState extends State<UploadScreen> {
-  static const String _sampleVideoAsset = 'assets/videos/IMG_2117.MOV';
-  static const String _sampleVideoName = 'IMG_2117.MOV';
-
   File? _selectedVideo;
   String? _selectedVideoName;
   bool _isLoading = false;
@@ -42,28 +39,120 @@ class _UploadScreenState extends State<UploadScreen> {
     final picker = ImagePicker();
     final picked = await picker.pickVideo(source: ImageSource.gallery);
 
-    if (picked != null) {
-      setState(() {
-        _selectedVideo = File(picked.path);
-        _selectedVideoName = picked.name;
-      });
+    if (picked == null) return;
+
+    // check format
+    final ext = picked.name.split('.').last.toLowerCase();
+    if (ext != 'mp4' && ext != 'mov') {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            icon: const Icon(
+              Icons.video_file_outlined,
+              color: Colors.red,
+              size: 48,
+            ),
+            title: const Text(
+              'Unsupported Format',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            content: Text(
+              'Invalid file format. Please upload an MP4 or MOV file.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade600, height: 1.5),
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.green,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text(
+                  'Try Again',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
     }
+
+    // check duration
+    final controller = VideoPlayerController.file(File(picked.path));
+    await controller.initialize();
+    final duration = controller.value.duration;
+    await controller.dispose();
+
+    if (duration.inSeconds > 60) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            icon: const Icon(
+              Icons.timer_off_rounded,
+              color: Colors.red,
+              size: 48,
+            ),
+            title: const Text(
+              'Video exceeds \n60 seconds',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.green,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text(
+                  'Try Again',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _selectedVideo = File(picked.path);
+      _selectedVideoName = picked.name;
+    });
   }
-
-  // Future<void> _useSampleVideo() async {
-  //   final data = await rootBundle.load(_sampleVideoAsset);
-  //   final file = File('${Directory.systemTemp.path}/$_sampleVideoName');
-  //   await file.writeAsBytes(
-  //     data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-  //     flush: true,
-  //   );
-
-  //   if (!mounted) return;
-  //   setState(() {
-  //     _selectedVideo = file;
-  //     _selectedVideoName = _sampleVideoName;
-  //   });
-  // }
 
   Future<void> _analyzeVideo() async {
     if (_selectedVideo == null) return;
@@ -97,7 +186,15 @@ class _UploadScreenState extends State<UploadScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => AnalysisResultScreen(analysisStream: stream),
+          builder: (_) => AnalysisResultScreen(
+            analysisStream: stream,
+            onMismatch: () {
+              setState(() {
+                _selectedVideo = null;
+                _selectedVideoName = null;
+              });
+            },
+          ),
         ),
       );
     }
@@ -511,32 +608,10 @@ class _YourVideoSection extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-
-          // Row(
-          //   children: [
-          //     Expanded(
-          //       child: OutlinedButton.icon(
-          //         onPressed: onUploadTap,
-          //         icon: const Icon(CupertinoIcons.folder_open),
-          //         label: Text(hasVideo ? 'Change video' : 'Pick video'),
-          //       ),
-          //     ),
-          //     const SizedBox(width: 10),
-              // Expanded(
-              //   child: ElevatedButton.icon(
-              //     onPressed: onSampleTap,
-              //     icon: const Icon(CupertinoIcons.play_rectangle),
-              //     label: const Text('Use sample'),
-              //     style: ElevatedButton.styleFrom(
-              //       backgroundColor: AppTheme.green,
-              //       foregroundColor: Colors.white,
-              //     ),
-              //   ),
-              // ),
-            ],
-          ),
-    //     ],
-    //   ),
+        ],
+      ),
+      //     ],
+      //   ),
     );
   }
 }
