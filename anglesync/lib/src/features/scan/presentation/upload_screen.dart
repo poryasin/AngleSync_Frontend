@@ -24,6 +24,7 @@ class UploadScreen extends StatefulWidget {
 class _UploadScreenState extends State<UploadScreen> {
   File? _selectedVideo;
   String? _selectedVideoName;
+  bool _selectedFileIsImage = false;
   bool _isLoading = false;
 
   final AnalysisService _analysisService = AnalysisService();
@@ -37,13 +38,21 @@ class _UploadScreenState extends State<UploadScreen> {
 
   Future<void> _pickVideo() async {
     final picker = ImagePicker();
-    final picked = await picker.pickVideo(source: ImageSource.gallery);
+    final picked = await picker.pickMedia();
 
     if (picked == null) return;
 
     // check format
     final ext = picked.name.split('.').last.toLowerCase();
-    if (ext != 'mp4' && ext != 'mov') {
+    final isVideo = ext == 'mp4' || ext == 'mov';
+    final isImage = ext == 'jpg' ||
+        ext == 'jpeg' ||
+        ext == 'png' ||
+        ext == 'heic' ||
+        ext == 'heif' ||
+        ext == 'webp';
+
+    if (!isVideo && !isImage) {
       if (mounted) {
         showDialog(
           context: context,
@@ -62,7 +71,7 @@ class _UploadScreenState extends State<UploadScreen> {
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
             content: Text(
-              'Invalid file format. Please upload an MP4 or MOV file.',
+              'Invalid file format. Please upload a video or image file.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600, height: 1.5),
             ),
@@ -96,66 +105,94 @@ class _UploadScreenState extends State<UploadScreen> {
     }
 
     // check duration
-    final controller = VideoPlayerController.file(File(picked.path));
-    await controller.initialize();
-    final duration = controller.value.duration;
-    await controller.dispose();
+    if (isVideo) {
+      final controller = VideoPlayerController.file(File(picked.path));
+      await controller.initialize();
+      final duration = controller.value.duration;
+      await controller.dispose();
 
-    if (duration.inSeconds > 60) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            icon: const Icon(
-              Icons.timer_off_rounded,
-              color: Colors.red,
-              size: 48,
-            ),
-            title: const Text(
-              'Video exceeds \n60 seconds',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-            actionsAlignment: MainAxisAlignment.center,
-            actions: [
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
-                  ),
-                ),
-                child: const Text(
-                  'Try Again',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+      if (duration.inSeconds > 60) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-            ],
-          ),
-        );
+              icon: const Icon(
+                Icons.timer_off_rounded,
+                color: Colors.red,
+                size: 48,
+              ),
+              title: const Text(
+                'Video exceeds \n60 seconds',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: const Text(
+                    'Try Again',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
       }
-      return;
     }
 
     setState(() {
       _selectedVideo = File(picked.path);
       _selectedVideoName = picked.name;
+      _selectedFileIsImage = isImage;
     });
   }
 
   Future<void> _analyzeVideo() async {
     if (_selectedVideo == null) return;
+
+    if (_selectedFileIsImage) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => _ImageMismatchScreen(
+            exerciseName: widget.exercise.title,
+            onChooseAnother: (mismatchContext) {
+              Navigator.pop(mismatchContext);
+              setState(() {
+                _selectedVideo = null;
+                _selectedVideoName = null;
+                _selectedFileIsImage = false;
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _pickVideo();
+                }
+              });
+            },
+          ),
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -192,6 +229,7 @@ class _UploadScreenState extends State<UploadScreen> {
               setState(() {
                 _selectedVideo = null;
                 _selectedVideoName = null;
+                _selectedFileIsImage = false;
               });
             },
           ),
@@ -224,6 +262,7 @@ class _UploadScreenState extends State<UploadScreen> {
                     _YourVideoSection(
                       selectedVideo: _selectedVideo,
                       selectedVideoName: _selectedVideoName,
+                      selectedFileIsImage: _selectedFileIsImage,
                       onUploadTap: _pickVideo,
                       // onSampleTap: _useSampleVideo,
                     ),
@@ -609,12 +648,14 @@ class _InlineVideoPlaceholder extends StatelessWidget {
 class _YourVideoSection extends StatelessWidget {
   final File? selectedVideo;
   final String? selectedVideoName;
+  final bool selectedFileIsImage;
   final VoidCallback onUploadTap;
   // final VoidCallback onSampleTap;
 
   const _YourVideoSection({
     required this.selectedVideo,
     required this.selectedVideoName,
+    required this.selectedFileIsImage,
     required this.onUploadTap,
     // required this.onSampleTap,
   });
@@ -635,10 +676,13 @@ class _YourVideoSection extends StatelessWidget {
       child: Column(
         children: [
           if (hasVideo) ...[
-            _InlineLocalVideoPlayer(
-              title: selectedVideoName ?? 'Selected video',
-              videoFile: video,
-            ),
+            if (selectedFileIsImage)
+              _InlineLocalImagePreview(imageFile: video)
+            else
+              _InlineLocalVideoPlayer(
+                title: selectedVideoName ?? 'Selected video',
+                videoFile: video,
+              ),
             const SizedBox(height: 14),
             Text(
               selectedVideoName ?? 'Selected video',
@@ -698,6 +742,41 @@ class _YourVideoSection extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _InlineLocalImagePreview extends StatelessWidget {
+  final File imageFile;
+
+  const _InlineLocalImagePreview({required this.imageFile});
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(
+            imageFile,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return const Center(
+                child: Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white,
+                  size: 36,
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -862,6 +941,133 @@ class _InlineLocalVideoPlayerState extends State<_InlineLocalVideoPlayer> {
         width: size.width,
         height: size.height,
         child: VideoPlayer(controller),
+      ),
+    );
+  }
+}
+
+class _ImageMismatchScreen extends StatelessWidget {
+  final String exerciseName;
+  final ValueChanged<BuildContext> onChooseAnother;
+
+  const _ImageMismatchScreen({
+    required this.exerciseName,
+    required this.onChooseAnother,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _MismatchAppBar(),
+            const Divider(height: 1),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.orange,
+                          size: 44,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Invalid file format',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Invalid file format. Please upload an MP4 or MOV file.',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 16,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () => onChooseAnother(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.green,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: const Text(
+                              'Choose another file',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MismatchAppBar extends StatelessWidget {
+  const _MismatchAppBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                CupertinoIcons.chevron_left,
+                size: 20,
+                color: CupertinoColors.activeBlue,
+              ),
+              SizedBox(width: 4),
+              Text(
+                'Upload',
+                style: TextStyle(
+                  fontSize: 17,
+                  color: CupertinoColors.activeBlue,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
