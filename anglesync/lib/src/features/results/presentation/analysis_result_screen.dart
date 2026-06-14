@@ -4,6 +4,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/service/analysis_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/risk_graph.dart';
+import '../widgets/analysis_details.dart';
 
 class AnalysisResultScreen extends StatelessWidget {
   final Stream<AnalysisEvent> analysisStream;
@@ -180,33 +181,48 @@ class AnalysisResultScreen extends StatelessWidget {
                     if (result.riskScores.isNotEmpty)
                       const SizedBox(height: 20),
 
+                    // Form Summary
                     _buildFeedbackCard(
-                      title: "Form Summary",
-                      content: feedback?.formSummary ?? '',
+                      title: 'Form Summary',
+                      items: [],
+                      icon: Icons.assignment_outlined,
+                      customContent: Text(
+                        result.feedback?.formSummary ?? '',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF444444),
+                          height: 1.6,
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 12),
 
-                    const SizedBox(height: 20),
-
+                    // Injury Risk
                     _buildFeedbackCard(
-                      title: "Injury Risk",
-                      content: feedback?.injuryRisk ?? '',
+                      title: 'Injury Risk',
+                      items: result.feedback?.injuryRisk ?? [],
+                      icon: Icons.shield_outlined,
+                      iconColor: const Color(0xFFE53935),
+                      iconBg: const Color(0xFFFFECEC),
+                      useBullet: true,
                     ),
+                    const SizedBox(height: 12),
 
-                    const SizedBox(height: 20),
-
+                    // Corrective Cues
                     _buildFeedbackCard(
-                      title: "Corrective Cues",
-                      content: feedback?.correctiveCues ?? '',
+                      title: 'Corrective Cues',
+                      items: result.feedback?.correctiveCues ?? [],
+                      icon: Icons.track_changes_outlined,
                     ),
+                    const SizedBox(height: 12),
 
-                    const SizedBox(height: 20),
-
+                    // Practice Plan
                     _buildFeedbackCard(
-                      title: "Practice Plan",
-                      content: feedback?.practicePlan ?? '',
+                      title: 'Practice Plan',
+                      items: result.feedback?.practicePlan ?? [],
+                      icon: Icons.calendar_today_outlined,
                     ),
-
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
                     SizedBox(
                       width: double.infinity,
@@ -389,36 +405,131 @@ class AnalysisResultScreen extends StatelessWidget {
   //
   // FEEDBACK CARD
   //
-  Widget _buildFeedbackCard({required String title, required String content}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-
-          const SizedBox(height: 14),
-
-          Text(
-            content.isEmpty ? 'No feedback provided.' : content,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade700,
-              height: 1.6,
+  Widget _buildFeedbackCard({
+  required String title,
+  required List<String> items,
+  Widget? customContent,
+  IconData? icon,
+  Color? iconColor,
+  Color? iconBg,
+  bool useBullet = false,
+}) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 12,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconBg ?? const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon ?? Icons.info_outline,
+                color: iconColor ?? Colors.green,
+                size: 17,
+              ),
             ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        const Divider(color: Color(0xFFF5F5F5), height: 1),
+        const SizedBox(height: 14),
+
+        // Content
+        if (customContent != null)
+          customContent
+        else if (items.isEmpty)
+          Text(
+            'No feedback provided.',
+            style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: items.asMap().entries.map((entry) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (useBullet)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: iconColor ?? Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: iconBg ?? const Color(0xFFE8F5E9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${entry.key + 1}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: iconColor ?? Colors.green,
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        entry.value,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF1A1A1A),
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
           ),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   Widget _buildMismatch(BuildContext context, AnalysisResult result) {
     return Scaffold(

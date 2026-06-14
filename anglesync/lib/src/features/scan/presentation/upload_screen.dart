@@ -289,26 +289,84 @@ class _ReferenceSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final referenceVideoUrl =
         exercise.referenceVideoUrl ?? exercise.description;
-    final description = exercise.description == referenceVideoUrl
-        ? exercise.category
-        : exercise.description;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          exercise.title,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        // ── Title + badge ──
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                exercise.title,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textDark,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                exercise.category,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.green,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        _InlineReferenceVideoPlayer(
-          title: exercise.title,
-          videoUrl: referenceVideoUrl,
+
+        const SizedBox(height: 14),
+
+        // ── Video ──
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: _InlineReferenceVideoPlayer(
+            title: exercise.title,
+            videoUrl: referenceVideoUrl,
+          ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          description,
-          style: TextStyle(color: Colors.grey.shade600, height: 1.5),
+
+        const SizedBox(height: 16),
+
+        // ── Instruction label ──
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.info_outline_rounded,
+                color: AppTheme.green,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Watch the reference video, then upload yours below.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF667085),
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -591,27 +649,56 @@ class _YourVideoSection extends StatelessWidget {
           ] else ...[
             GestureDetector(
               onTap: onUploadTap,
-              child: Column(
-                children: [
-                  const Icon(
-                    CupertinoIcons.arrow_up_to_line,
-                    size: 48,
-                    color: AppTheme.green,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                decoration: BoxDecoration(
+                  color: AppTheme.green.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppTheme.green.withOpacity(0.3),
+                    style: BorderStyle.solid,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Upload your workout video',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ],
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: AppTheme.green.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.arrow_up_to_line,
+                        size: 28,
+                        color: AppTheme.green,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Upload your workout video',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'MP4 or MOV · Max 60 seconds',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
-          const SizedBox(height: 14),
         ],
       ),
-      //     ],
-      //   ),
     );
   }
 }

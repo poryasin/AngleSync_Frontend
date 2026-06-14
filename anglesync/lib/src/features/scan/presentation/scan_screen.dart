@@ -333,7 +333,7 @@ class _ExerciseCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textDark,
+                        color: AppTheme.green,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -368,28 +368,23 @@ class _ExerciseCard extends StatelessWidget {
 
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    item.title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textDark,
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textDark,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-
-                  const SizedBox(height: 6),
-
-                  Text(
-                    item.description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade500,
-                      height: 1.5,
-                    ),
-                  ),
+                  const SizedBox(width: 8),
                 ],
               ),
             ),

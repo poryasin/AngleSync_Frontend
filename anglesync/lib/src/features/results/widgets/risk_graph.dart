@@ -164,23 +164,90 @@ class RiskGraph extends StatelessWidget {
             child: highestRiskImageUrl != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(18),
-                    child: Image.network(
-                      highestRiskImageUrl!,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white38,
+                    child: GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Dialog(
+                            backgroundColor: Colors.transparent,
+                            insetPadding: const EdgeInsets.all(16),
+                            child: Stack(
+                              children: [
+                                InteractiveViewer(
+                                  minScale: 1.0,
+                                  maxScale: 5.0,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Image.network(
+                                      highestRiskImageUrl!,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.pop(context),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
-                      errorBuilder: (_, __, ___) => const Center(
-                        child: Icon(
-                          Icons.broken_image,
-                          color: Colors.white38,
-                          size: 48,
-                        ),
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: Image.network(
+                              highestRiskImageUrl!,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white38,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (_, __, ___) => const Center(
+                                child: Icon(
+                                  Icons.broken_image,
+                                  color: Colors.white38,
+                                  size: 48,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 10,
+                            right: 10,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.zoom_in_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -192,7 +259,6 @@ class RiskGraph extends StatelessWidget {
                     ),
                   ),
           ),
-
           const SizedBox(height: 12),
 
           // ── Caption ──
@@ -214,7 +280,7 @@ class RiskGraph extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "Most risky moment detected at ${_peakTime.toStringAsFixed(2)}s",
+                    "Tap the image above to inspect the frame in detail",
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFFE53935),

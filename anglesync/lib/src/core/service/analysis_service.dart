@@ -67,9 +67,9 @@ class SelectedFrame {
 
 class AnalysisFeedback {
   final String formSummary;
-  final String injuryRisk;
-  final String correctiveCues;
-  final String practicePlan;
+  final List<String> injuryRisk;
+  final List<String> correctiveCues;
+  final List<String> practicePlan;
   final String? error;
 
   const AnalysisFeedback({
@@ -82,12 +82,50 @@ class AnalysisFeedback {
 
   bool get hasError => error != null && error!.isNotEmpty;
 
+static List<String> _toList(dynamic value) {
+  if (value is List) return value.map((e) => e.toString()).toList();
+  if (value is String && value.isNotEmpty) {
+    // ลบ [ ] และ '
+    final cleaned = value
+        .replaceAll(RegExp(r'^\[|\]$'), '')
+        .replaceAll("'", '')
+        .trim();
+
+    // ถ้ามี comma ให้ split ด้วย comma ก่อน
+    if (cleaned.contains(',')) {
+      return cleaned
+          .split(RegExp(r',\s*'))
+          .map((s) => s.replaceAll(RegExp(r'^\d+\.\s*'), '').trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+
+    // ถ้าเป็น numbered list เช่น "1. xxx 2. xxx"
+    if (RegExp(r'\d+\.').hasMatch(cleaned)) {
+      return cleaned
+          .split(RegExp(r'(?=\d+\.\s)'))
+          .map((s) => s.replaceAll(RegExp(r'^\d+\.\s*'), '').trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+
+    // ถ้าเป็น sentence หลายประโยคคั่นด้วย '. '
+    return cleaned
+        .split(RegExp(r'\.\s+(?=[A-Z])'))
+        .map((s) => s.endsWith('.') ? s : '$s.')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+  return [];
+}
+
   factory AnalysisFeedback.fromJson(Map<String, dynamic> json) {
     return AnalysisFeedback(
       formSummary: json['form_summary'] ?? '',
-      injuryRisk: json['injury_risk'] ?? '',
-      correctiveCues: json['corrective_cues'] ?? '',
-      practicePlan: json['practice_plan'] ?? '',
+      injuryRisk: _toList(json['injury_risk']),
+      correctiveCues: _toList(json['corrective_cues']),
+      practicePlan: _toList(json['practice_plan']),
       error: json['error'],
     );
   }
