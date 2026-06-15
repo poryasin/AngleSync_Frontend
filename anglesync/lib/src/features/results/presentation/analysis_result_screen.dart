@@ -64,7 +64,14 @@ class AnalysisResultScreen extends StatelessWidget {
             //
             if (event is ResultEvent) {
               if (event.result.isExerciseMismatch) {
-                return _buildMismatch(context, event.result);
+                return _buildMismatch(context);
+              }
+
+              if (event.result.hasFeedbackError) {
+                return _buildError(
+                  context,
+                  'Analysis failed. Please try again later.',
+                );
               }
 
               return _buildResult(context, event.result);
@@ -531,7 +538,7 @@ class AnalysisResultScreen extends StatelessWidget {
   );
 }
 
-  Widget _buildMismatch(BuildContext context, AnalysisResult result) {
+  Widget _buildMismatch(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7F4),
       body: SafeArea(
@@ -560,7 +567,7 @@ class AnalysisResultScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'Exercise mismatch',
+                          'Detection failed.',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -569,7 +576,7 @@ class AnalysisResultScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'This video does not match ${result.exerciseName}. Please upload a video for the selected exercise.',
+                          'Please ensure that the person is visible.',
                           style: TextStyle(
                             color: Colors.grey.shade700,
                             fontSize: 16,

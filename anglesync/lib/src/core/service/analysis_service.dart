@@ -161,6 +161,7 @@ class AnalysisResult {
   });
 
   bool get isExerciseMismatch => !canAnalyze || status == 'exercise_mismatch';
+  bool get hasFeedbackError => feedback?.hasError ?? false;
 
   factory AnalysisResult.fromJson(
     Map<String, dynamic> json,
