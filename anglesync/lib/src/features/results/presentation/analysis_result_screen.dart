@@ -28,7 +28,7 @@ class AnalysisResultScreen extends StatelessWidget {
             // LOADING
             //
             if (!snapshot.hasData) {
-              return _buildLoading(context);
+              return _buildProgress(context, 'Uploading video...', 10);
             }
 
             final event = snapshot.data!;
@@ -56,6 +56,10 @@ class AnalysisResultScreen extends StatelessWidget {
             // ERROR
             //
             if (event is ErrorEvent) {
+              if (_isDetectionFailureMessage(event.message)) {
+                return _buildDetectionFailure(context);
+              }
+
               return _buildError(context, event.message);
             }
 
@@ -64,7 +68,11 @@ class AnalysisResultScreen extends StatelessWidget {
             //
             if (event is ResultEvent) {
               if (event.result.isExerciseMismatch) {
-                return _buildMismatch(context);
+                return _buildExerciseMismatch(context, event.result);
+              }
+
+              if (event.result.isDetectionFailure) {
+                return _buildDetectionFailure(context);
               }
 
               if (event.result.hasFeedbackError) {
@@ -77,19 +85,10 @@ class AnalysisResultScreen extends StatelessWidget {
               return _buildResult(context, event.result);
             }
 
-            return _buildLoading(context);
+            return _buildProgress(context, 'Analyzing posture...', 0);
           },
         ),
       ),
-    );
-  }
-
-  //
-  // LOADING
-  //
-  Widget _buildLoading(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(color: AppTheme.green),
     );
   }
 
@@ -413,132 +412,159 @@ class AnalysisResultScreen extends StatelessWidget {
   // FEEDBACK CARD
   //
   Widget _buildFeedbackCard({
-  required String title,
-  required List<String> items,
-  Widget? customContent,
-  IconData? icon,
-  Color? iconColor,
-  Color? iconBg,
-  bool useBullet = false,
-}) {
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.04),
-          blurRadius: 12,
-          offset: const Offset(0, 3),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: iconBg ?? const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(8),
+    required String title,
+    required List<String> items,
+    Widget? customContent,
+    IconData? icon,
+    Color? iconColor,
+    Color? iconBg,
+    bool useBullet = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: iconBg ?? const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon ?? Icons.info_outline,
+                  color: iconColor ?? Colors.green,
+                  size: 17,
+                ),
               ),
-              child: Icon(
-                icon ?? Icons.info_outline,
-                color: iconColor ?? Colors.green,
-                size: 17,
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        const Divider(color: Color(0xFFF5F5F5), height: 1),
-        const SizedBox(height: 14),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(color: Color(0xFFF5F5F5), height: 1),
+          const SizedBox(height: 14),
 
-        // Content
-        if (customContent != null)
-          customContent
-        else if (items.isEmpty)
-          Text(
-            'No feedback provided.',
-            style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
-          )
-        else
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: items.asMap().entries.map((entry) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (useBullet)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Container(
-                          width: 7,
-                          height: 7,
+          // Content
+          if (customContent != null)
+            customContent
+          else if (items.isEmpty)
+            Text(
+              'No feedback provided.',
+              style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: items.asMap().entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (useBullet)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: iconColor ?? Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          width: 22,
+                          height: 22,
                           decoration: BoxDecoration(
-                            color: iconColor ?? Colors.green,
+                            color: iconBg ?? const Color(0xFFE8F5E9),
                             shape: BoxShape.circle,
                           ),
-                        ),
-                      )
-                    else
-                      Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          color: iconBg ?? const Color(0xFFE8F5E9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${entry.key + 1}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: iconColor ?? Colors.green,
+                          child: Center(
+                            child: Text(
+                              '${entry.key + 1}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: iconColor ?? Colors.green,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        entry.value,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF1A1A1A),
-                          height: 1.5,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          entry.value,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF1A1A1A),
+                            height: 1.5,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-      ],
-    ),
-  );
-}
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildMismatch(BuildContext context) {
+  bool _isDetectionFailureMessage(String message) {
+    final normalized = message.toLowerCase();
+    return normalized.contains('detection failed') ||
+        normalized.contains('keypoint not found');
+  }
+
+  Widget _buildExerciseMismatch(BuildContext context, AnalysisResult result) {
+    return _buildRetryCard(
+      context: context,
+      title: 'Exercise mismatch',
+      message:
+          'This video does not match ${result.exerciseName}. Please upload a video for the selected exercise.',
+    );
+  }
+
+  Widget _buildDetectionFailure(BuildContext context) {
+    return _buildRetryCard(
+      context: context,
+      title: 'Keypoint not found',
+      message: 'Please ensure that the person is visible.',
+    );
+  }
+
+  Widget _buildRetryCard({
+    required BuildContext context,
+    required String title,
+    required String message,
+  }) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7F4),
       body: SafeArea(
@@ -566,9 +592,9 @@ class AnalysisResultScreen extends StatelessWidget {
                           size: 44,
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'Detection failed.',
-                          style: TextStyle(
+                        Text(
+                          title,
+                          style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
                           ),
@@ -576,7 +602,7 @@ class AnalysisResultScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Please ensure that the person is visible.',
+                          message,
                           style: TextStyle(
                             color: Colors.grey.shade700,
                             fontSize: 16,

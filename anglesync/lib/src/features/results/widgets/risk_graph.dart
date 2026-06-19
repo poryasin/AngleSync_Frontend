@@ -18,24 +18,15 @@ class RiskGraph extends StatelessWidget {
 
   double get _totalDuration => frameTimes.isNotEmpty ? frameTimes.last : 0.0;
 
-  double get _peakTime => highestRiskFrameIndex < frameTimes.length
-      ? frameTimes[highestRiskFrameIndex]
-      : 0.0;
+  int get _peakIndex =>
+      highestRiskFrameIndex >= 0 && highestRiskFrameIndex < _riskData.length
+      ? highestRiskFrameIndex
+      : 0;
 
-  double get _peakRisk =>
-      riskScores.isNotEmpty ? riskScores[highestRiskFrameIndex] : 0.0;
+  double get _peakTime =>
+      _peakIndex < frameTimes.length ? frameTimes[_peakIndex] : 0.0;
 
-  int get _peakIndex {
-    double max = 0;
-    int idx = 0;
-    for (int i = 0; i < _riskData.length; i++) {
-      if (_riskData[i] > max) {
-        max = _riskData[i];
-        idx = i;
-      }
-    }
-    return idx;
-  }
+  double get _peakRisk => riskScores.isNotEmpty ? riskScores[_peakIndex] : 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -83,13 +74,17 @@ class RiskGraph extends StatelessWidget {
           // ── Graph (ไม่มี GestureDetector แล้ว) ──
           SizedBox(
             height: 200,
-            child: CustomPaint(
-              painter: _RiskChartPainter(
-                data: _riskData,
-                peakIndex: _peakIndex,
-                peakValue: _riskData[_peakIndex],
+            child: Semantics(
+              label:
+                  "Peak ${_peakRisk.toInt()} at ${_peakTime.toStringAsFixed(2)} seconds",
+              child: CustomPaint(
+                painter: _RiskChartPainter(
+                  data: _riskData,
+                  peakIndex: _peakIndex,
+                  peakValue: _peakRisk,
+                ),
+                size: Size.infinite,
               ),
-              size: Size.infinite,
             ),
           ),
 

@@ -45,7 +45,8 @@ class _UploadScreenState extends State<UploadScreen> {
     // check format
     final ext = picked.name.split('.').last.toLowerCase();
     final isVideo = ext == 'mp4' || ext == 'mov';
-    final isImage = ext == 'jpg' ||
+    final isImage =
+        ext == 'jpg' ||
         ext == 'jpeg' ||
         ext == 'png' ||
         ext == 'heic' ||
@@ -166,7 +167,7 @@ class _UploadScreenState extends State<UploadScreen> {
     });
   }
 
-  Future<void> _analyzeVideo() async {
+  void _analyzeVideo() {
     if (_selectedVideo == null) return;
 
     if (_selectedFileIsImage) {
@@ -198,21 +199,6 @@ class _UploadScreenState extends State<UploadScreen> {
       _isLoading = true;
     });
 
-    final isOnline = await _analysisService.isServerOnline();
-
-    if (!isOnline) {
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Backend server is not running')),
-        );
-      }
-      return;
-    }
-
     final stream = _analysisService.analyzeVideo(
       videoFile: _selectedVideo!,
       exerciseName: widget.exercise.title,
@@ -237,9 +223,11 @@ class _UploadScreenState extends State<UploadScreen> {
       );
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override

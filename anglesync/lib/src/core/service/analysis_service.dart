@@ -82,43 +82,43 @@ class AnalysisFeedback {
 
   bool get hasError => error != null && error!.isNotEmpty;
 
-static List<String> _toList(dynamic value) {
-  if (value is List) return value.map((e) => e.toString()).toList();
-  if (value is String && value.isNotEmpty) {
-    // ลบ [ ] และ '
-    final cleaned = value
-        .replaceAll(RegExp(r'^\[|\]$'), '')
-        .replaceAll("'", '')
-        .trim();
+  static List<String> _toList(dynamic value) {
+    if (value is List) return value.map((e) => e.toString()).toList();
+    if (value is String && value.isNotEmpty) {
+      // ลบ [ ] และ '
+      final cleaned = value
+          .replaceAll(RegExp(r'^\[|\]$'), '')
+          .replaceAll("'", '')
+          .trim();
 
-    // ถ้ามี comma ให้ split ด้วย comma ก่อน
-    if (cleaned.contains(',')) {
+      // ถ้ามี comma ให้ split ด้วย comma ก่อน
+      if (cleaned.contains(',')) {
+        return cleaned
+            .split(RegExp(r',\s*'))
+            .map((s) => s.replaceAll(RegExp(r'^\d+\.\s*'), '').trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+
+      // ถ้าเป็น numbered list เช่น "1. xxx 2. xxx"
+      if (RegExp(r'\d+\.').hasMatch(cleaned)) {
+        return cleaned
+            .split(RegExp(r'(?=\d+\.\s)'))
+            .map((s) => s.replaceAll(RegExp(r'^\d+\.\s*'), '').trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+
+      // ถ้าเป็น sentence หลายประโยคคั่นด้วย '. '
       return cleaned
-          .split(RegExp(r',\s*'))
-          .map((s) => s.replaceAll(RegExp(r'^\d+\.\s*'), '').trim())
+          .split(RegExp(r'\.\s+(?=[A-Z])'))
+          .map((s) => s.endsWith('.') ? s : '$s.')
+          .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
           .toList();
     }
-
-    // ถ้าเป็น numbered list เช่น "1. xxx 2. xxx"
-    if (RegExp(r'\d+\.').hasMatch(cleaned)) {
-      return cleaned
-          .split(RegExp(r'(?=\d+\.\s)'))
-          .map((s) => s.replaceAll(RegExp(r'^\d+\.\s*'), '').trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    }
-
-    // ถ้าเป็น sentence หลายประโยคคั่นด้วย '. '
-    return cleaned
-        .split(RegExp(r'\.\s+(?=[A-Z])'))
-        .map((s) => s.endsWith('.') ? s : '$s.')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
+    return [];
   }
-  return [];
-}
 
   factory AnalysisFeedback.fromJson(Map<String, dynamic> json) {
     return AnalysisFeedback(
@@ -160,7 +160,8 @@ class AnalysisResult {
     this.highestRiskImageUrl,
   });
 
-  bool get isExerciseMismatch => !canAnalyze || status == 'exercise_mismatch';
+  bool get isExerciseMismatch => status == 'exercise_mismatch';
+  bool get isDetectionFailure => !canAnalyze && !isExerciseMismatch;
   bool get hasFeedbackError => feedback?.hasError ?? false;
 
   factory AnalysisResult.fromJson(

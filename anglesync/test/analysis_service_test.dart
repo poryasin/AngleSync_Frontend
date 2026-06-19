@@ -20,14 +20,25 @@ void main() {
       expect(result.hasFeedbackError, isTrue);
     });
 
-    test('keeps detection failures as exercise mismatches', () {
+    test('keeps exercise mismatches separate from detection failures', () {
       final result = AnalysisResult.fromJson({
         'can_analyze': false,
         'status': 'exercise_mismatch',
       }, 'Push up_men');
 
       expect(result.isExerciseMismatch, isTrue);
+      expect(result.isDetectionFailure, isFalse);
       expect(result.hasFeedbackError, isFalse);
+    });
+
+    test('reports non-mismatch canAnalyze failures as detection failures', () {
+      final result = AnalysisResult.fromJson({
+        'can_analyze': false,
+        'status': 'keypoint_not_found',
+      }, 'Push up_men');
+
+      expect(result.isExerciseMismatch, isFalse);
+      expect(result.isDetectionFailure, isTrue);
     });
   });
 }
