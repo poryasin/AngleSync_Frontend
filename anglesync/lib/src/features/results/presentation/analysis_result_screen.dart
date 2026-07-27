@@ -4,7 +4,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/service/analysis_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/risk_graph.dart';
-import '../widgets/analysis_details.dart';
+import '../widgets/save_session_dialog.dart';
 
 class AnalysisResultScreen extends StatelessWidget {
   final Stream<AnalysisEvent> analysisStream;
@@ -235,10 +235,16 @@ class AnalysisResultScreen extends StatelessWidget {
                       height: 58,
                       child: ElevatedButton.icon(
                         onPressed: () async {
+                          final sessionName = await SaveSessionDialog.show(
+                            context,
+                          );
+                          if (sessionName == null || !context.mounted)
+                            return; // user cancelled
+
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Result Saved"),
-                              duration: Duration(seconds: 2),
+                            SnackBar(
+                              content: Text('Saved as "$sessionName"'),
+                              duration: const Duration(seconds: 2),
                             ),
                           );
 

@@ -346,3 +346,45 @@ class AnalysisException implements Exception {
   @override
   String toString() => message;
 }
+
+
+
+Future<Map<String, dynamic>> saveAnalysisResult({
+    required String sessionName,
+    required AnalysisResult result,
+  }) async {
+    final uri = Uri.parse('${BackendConfig.baseUrl}/analysis/save');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'session_name': sessionName,
+              'accuracy_score': result.score,
+              'feedback': {
+                'form_summary': result.feedback?.formSummary,
+                'injury_risk': result.feedback?.injuryRisk,
+                'corrective_cues': result.feedback?.correctiveCues,
+                'practice_plan': result.feedback?.practicePlan,
+              },
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        throw const AnalysisException('Unable to save result. Please try again.');
+      }
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } on SocketException {
+      throw const AnalysisException(
+        'Cannot connect to backend.\nMake sure FastAPI server is running.',
+      );
+    } on AnalysisException {
+      rethrow;
+    } catch (e) {
+      throw const AnalysisException('Unable to save result. Please try again.');
+    }
+  }

@@ -1,9 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:anglesync/src/features/navigation/presentation/main_shell.dart';
 import 'package:anglesync/src/features/scan/presentation/scan_screen.dart';
 import 'package:anglesync/src/features/scan/domain/exercise_detail.dart';
-import 'package:anglesync/src/features/history/presentation/history_screen.dart';
 import 'package:anglesync/src/features/scan/presentation/upload_screen.dart';
 
 class AppRouter {
