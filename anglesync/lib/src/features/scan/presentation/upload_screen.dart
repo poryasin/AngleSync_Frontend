@@ -1,12 +1,9 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:photo_manager/photo_manager.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/service/analysis_service.dart';
 import '../../results/presentation/analysis_result_screen.dart';

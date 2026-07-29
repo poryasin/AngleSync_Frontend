@@ -349,7 +349,9 @@ class _RiskChartPainter extends CustomPainter {
 
     // ── Fill ──
     final fillPath = Path()..moveTo(pts.first.dx, bottomY);
-    for (final p in pts) fillPath.lineTo(p.dx, p.dy);
+    for (final p in pts) {
+      fillPath.lineTo(p.dx, p.dy);
+    }
     fillPath.lineTo(pts.last.dx, bottomY);
     fillPath.close();
     canvas.drawPath(

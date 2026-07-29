@@ -2,8 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/widgets/app_bottom_nav_bar.dart';
-import '../../history/presentation/history_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback? onViewAllHistory;
