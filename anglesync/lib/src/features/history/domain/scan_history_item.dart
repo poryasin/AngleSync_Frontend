@@ -5,29 +5,46 @@ class ScanHistoryItem {
   final double? score;
 
   const ScanHistoryItem({
-    required this.id,
+    this.id,
     required this.title,
-    required this.analysisDate,
-    required this.score,
+    this.analysisDate,
+    this.score,
   });
 
   factory ScanHistoryItem.fromJson(Map<String, dynamic> json) {
     final rawSessionId = json['session_id'] ?? json['id'];
-    final rawScore = json['accuracy_score'];
-    final score = rawScore is num
+    final rawScore = json['accuracy_score'] ?? json['score'];
+    final rawDate = json['analysis_date'] ?? json['saved_at'] ?? json['created_at'];
+
+    // Safe integer parsing
+    final parsedId = rawSessionId is num
+        ? rawSessionId.toInt()
+        : int.tryParse(rawSessionId?.toString() ?? '');
+
+    // Safe double parsing
+    final parsedScore = rawScore is num
         ? rawScore.toDouble()
         : double.tryParse(rawScore?.toString() ?? '');
-    final rawDate = json['analysis_date'] ?? json['saved_at'];
+
+    // Safe DateTime parsing
+    final parsedDate = rawDate != null
+        ? DateTime.tryParse(rawDate.toString())
+        : null;
 
     return ScanHistoryItem(
-      id: rawSessionId is num
-          ? rawSessionId.toInt()
-          : int.tryParse(rawSessionId?.toString() ?? ''),
-      title: (json['session_name'] ?? 'Untitled session').toString(),
-      analysisDate: rawDate == null
-          ? null
-          : DateTime.tryParse(rawDate.toString()),
-      score: score,
+      id: parsedId,
+      title: (json['session_name'] ?? json['title'] ?? 'Untitled session').toString(),
+      analysisDate: parsedDate,
+      score: parsedScore,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'session_id': id,
+      'session_name': title,
+      'analysis_date': analysisDate?.toIso8601String(),
+      'accuracy_score': score,
+    };
   }
 }
