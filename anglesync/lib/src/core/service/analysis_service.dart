@@ -218,74 +218,74 @@ class AnalysisResult {
   bool get isExerciseMismatch => status == 'exercise_mismatch';
   bool get isDetectionFailure => !canAnalyze && !isExerciseMismatch;
   bool get hasFeedbackError => feedback?.hasError ?? false;
+factory AnalysisResult.fromJson(
+  Map<String, dynamic> json,
+  String exerciseName,
+) {
+  final selectedFrameJson = json['selected_frame'];
+  final feedbackJson = json['feedback'];
 
-  factory AnalysisResult.fromJson(
-    Map<String, dynamic> json,
-    String exerciseName,
-  ) {
-    final selectedFrameJson = json['selected_frame'];
-    final feedbackJson = json['feedback'];
+  final graphData = json['graph_data'] is Map<String, dynamic>
+      ? json['graph_data'] as Map<String, dynamic>
+      : <String, dynamic>{};
 
-    final graphData = json['graph_data'] is Map<String, dynamic>
-        ? json['graph_data'] as Map<String, dynamic>
-        : <String, dynamic>{};
+  final rawRiskFrames = json['risk_frames'] is List
+      ? json['risk_frames'] as List
+      : const [];
+  final riskFrames = rawRiskFrames
+      .whereType<Map>()
+      .map((e) => RiskFrame.fromJson(Map<String, dynamic>.from(e)))
+      .toList();
 
-    final rawRiskFrames = json['risk_frames'] is List
-        ? json['risk_frames'] as List
-        : const [];
-    final riskFrames = rawRiskFrames
-        .whereType<Map>()
-        .map((e) => RiskFrame.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+  final rawScores =
+      graphData['risk_scores'] ??
+      riskFrames.map((f) => f.riskPercentage).toList();
+  final riskScores = rawScores is List
+      ? rawScores.map((e) => (e as num).toDouble()).toList()
+      : <double>[];
 
-    final rawScores =
-        graphData['risk_scores'] ??
-        riskFrames.map((f) => f.riskPercentage).toList();
-    final riskScores = rawScores is List
-        ? rawScores.map((e) => (e as num).toDouble()).toList()
-        : <double>[];
+  final rawTimes =
+      graphData['frame_times'] ??
+      riskFrames.map((f) => f.frameNumber).toList();
+  final frameTimes = rawTimes is List
+      ? rawTimes.map((e) => (e as num).toDouble()).toList()
+      : <double>[];
 
-    final rawTimes =
-        graphData['frame_times'] ??
-        riskFrames.map((f) => f.frameNumber).toList();
-    final frameTimes = rawTimes is List
-        ? rawTimes.map((e) => (e as num).toDouble()).toList()
-        : <double>[];
+  final highestIndex =
+      (graphData['highest_risk_frame_index'] as num?)?.toInt() ??
+      _highestRiskIndex(riskScores);
+  final fallbackImageUrl =
+      riskFrames.isNotEmpty && highestIndex < riskFrames.length
+      ? riskFrames[highestIndex].skeletonOverlayUrl
+      : null;
 
-    final highestIndex =
-        (graphData['highest_risk_frame_index'] as num?)?.toInt() ??
-        _highestRiskIndex(riskScores);
-    final fallbackImageUrl =
-        riskFrames.isNotEmpty && highestIndex < riskFrames.length
-        ? riskFrames[highestIndex].skeletonOverlayUrl
-        : null;
+  return AnalysisResult(
+    score:
+        (json['score'] as num?)?.toDouble() ??
+        (json['accuracy_score'] as num?)?.toDouble() ??
+        0,
+    scoreScale:
+        (json['score_scale'] as num?)?.toInt() ??
+        (json.containsKey('accuracy_score') ? 100 : 10),
+    canAnalyze: json['can_analyze'] as bool? ?? true,
+    status: json['status'] as String? ?? 'completed',
+    riskLevel: json['risk_level'] as String? ?? '',
+    selectedFrame: selectedFrameJson is Map<String, dynamic>
+        ? SelectedFrame.fromJson(selectedFrameJson)
+        : null,
+    feedback: feedbackJson is Map<String, dynamic>
+        ? AnalysisFeedback.fromJson(feedbackJson)
+        : null,
+    exerciseName: exerciseName,
+    riskScores: riskScores,
+    frameTimes: frameTimes,
+    highestRiskFrameIndex: highestIndex,
+    highestRiskImageUrl:
+        graphData['highest_risk_image_url'] as String? ?? fallbackImageUrl,
+    riskFrames: riskFrames,
+  );
+}
 
-    return AnalysisResult(
-      score:
-          (json['score'] as num?)?.toDouble() ??
-          (json['accuracy_score'] as num?)?.toDouble() ??
-          0,
-      scoreScale:
-          (json['score_scale'] as num?)?.toInt() ??
-          (json.containsKey('accuracy_score') ? 100 : 10),
-      canAnalyze: json['can_analyze'] as bool? ?? true,
-      status: json['status'] as String? ?? 'completed',
-      riskLevel: json['risk_level'] as String? ?? '',
-      selectedFrame: selectedFrameJson is Map<String, dynamic>
-          ? SelectedFrame.fromJson(selectedFrameJson)
-          : null,
-      feedback: feedbackJson is Map<String, dynamic>
-          ? AnalysisFeedback.fromJson(feedbackJson)
-          : null,
-      exerciseName: exerciseName,
-      riskScores: riskScores,
-      frameTimes: frameTimes,
-      highestRiskFrameIndex: highestIndex,
-      highestRiskImageUrl:
-          graphData['highest_risk_image_url'] as String? ?? fallbackImageUrl,
-      riskFrames: riskFrames,
-    );
-  }
   static int _highestRiskIndex(List<double> riskScores) {
     if (riskScores.isEmpty) return 0;
     var highestIndex = 0;
@@ -436,7 +436,7 @@ class AnalysisException implements Exception {
   String toString() => message;
 }
 
-// 💥 แก้ไขฟังก์ชัน saveAnalysisResult
+// BACKEND API FUNCTIONS FOR HISTORY
 Future<Map<String, dynamic>> saveAnalysisResult({
   required String sessionName,
   required AnalysisResult result,
@@ -446,171 +446,149 @@ Future<Map<String, dynamic>> saveAnalysisResult({
 }) async {
   final uri = Uri.parse('${BackendConfig.baseUrl}/save-analyze');
   try {
-    // แปลง riskFrames จาก AnalysisResult ให้เป็น List<Map>
     final riskFramesPayload = result.riskFrames.map((frame) {
       return {
         'frame_number': frame.frameNumber,
         'risk_percentage': frame.riskPercentage,
         'highest_risk_image_url':
             frame.skeletonOverlayUrl ?? result.highestRiskImageUrl ?? '',
-        'joint_coordinates':
-            frame.jointCoordinates
-                ?.map((j) => {'joint_name': j.jointName, 'x': j.x, 'y': j.y})
-                .toList() ??
-            [],
+        'joint_coordinates': frame.jointCoordinates
+            ?.map((j) => {'joint_name': j.jointName, 'x': j.x, 'y': j.y})
+            .toList(),
       };
     }).toList();
 
-    // Fallback ถ้าไม่มี riskFrames ให้ดึงจาก selectedFrame ตัวหลัก
-    if (riskFramesPayload.isEmpty && result.selectedFrame != null) {
-      riskFramesPayload.add({
-        'frame_number': result.selectedFrame!.frame,
-        'risk_percentage': result.selectedFrame!.risk,
-        'highest_risk_image_url': result.selectedFrame!.image.isNotEmpty
-            ? result.selectedFrame!.image
-            : (result.highestRiskImageUrl ?? ''),
-      });
-    }
-
-    final response = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'user_id': userId,
-            'session_name': sessionName,
-            'reference_video_id': referenceVideoId,
-            'video_user_url': videoUserUrl,
-            'accuracy_score': result.score,
-            'risk_frames': riskFramesPayload,
-            'feedback': {
-              'form_summary': result.feedback?.formSummary ?? '',
-              'injury_risk': result.feedback?.injuryRisk ?? [],
-              'corrective_cues': result.feedback?.correctiveCues ?? [],
-              'practice_plan': result.feedback?.practicePlan ?? [],
-            },
-          }),
-        )
-        .timeout(const Duration(seconds: 15));
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw const AnalysisException('Unable to save result. Please try again.');
-    }
-
-    return jsonDecode(response.body) as Map<String, dynamic>;
-  } on SocketException {
-    throw const AnalysisException(
-      'Cannot connect to backend.\nMake sure FastAPI server is running.',
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'session_name': sessionName,
+        'user_id': userId,
+        'reference_video_id': referenceVideoId,
+        'video_user_url': videoUserUrl,
+        'score': result.score,
+        'risk_level': result.riskLevel,
+        'risk_frames': riskFramesPayload,
+      }),
     );
-  } on AnalysisException {
-    rethrow;
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw AnalysisException('Failed to save session: ${response.body}');
+    }
   } catch (e) {
-    throw const AnalysisException('Unable to save result. Please try again.');
+    throw AnalysisException('Network error while saving: $e');
   }
 }
 
 Future<List<ScanHistoryItem>> fetchAnalysisHistory() async {
-  final uri = Uri.parse('${BackendConfig.baseUrl}/history?sort_order=desc');
-
+  final uri = Uri.parse('${BackendConfig.baseUrl}/history');
   try {
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw const AnalysisException(
-        'Unable to load history. Please try again.',
-      );
+      List<dynamic> listData = [];
+
+      // เช็คว่า response ส่งมาเป็น List ตรงๆ หรือห่ออยู่ใน Map
+      if (decoded is List) {
+        listData = decoded;
+      } else if (decoded is Map<String, dynamic>) {
+        // ลองดึง key ที่ Backend มักใช้ห่อข้อมูล
+        if (decoded['data'] is List) {
+          listData = decoded['data'];
+        } else if (decoded['sessions'] is List) {
+          listData = decoded['sessions'];
+        } else if (decoded['history'] is List) {
+          listData = decoded['history'];
+        } else {
+          // หากไม่มี key ข้างต้น และอาจเป็น error message ที่ส่งมากับ status 200
+          throw AnalysisException(decoded['message'] ?? decoded['error'] ?? 'Invalid response format');
+        }
+      }
+
+      return listData.map((item) => ScanHistoryItem.fromJson(item)).toList();
+    } else {
+      throw AnalysisException('Failed to fetch history (${response.statusCode})');
     }
-
-    final decoded = jsonDecode(response.body);
-    final records = decoded is List
-        ? decoded
-        : decoded is Map<String, dynamic>
-        ? decoded['data'] ??
-              decoded['sessions'] ??
-              decoded['history'] ??
-              const []
-        : const [];
-
-    if (records is! List) {
-      throw const AnalysisException(
-        'Unable to load history. Please try again.',
-      );
-    }
-
-    final sessions = records
-        .whereType<Map>()
-        .map(
-          (record) =>
-              ScanHistoryItem.fromJson(Map<String, dynamic>.from(record)),
-        )
-        .toList();
-    sessions.sort((a, b) {
-      final aDate = a.analysisDate?.millisecondsSinceEpoch ?? 0;
-      final bDate = b.analysisDate?.millisecondsSinceEpoch ?? 0;
-      return bDate.compareTo(aDate);
-    });
-    return sessions;
-  } on SocketException {
-    throw const AnalysisException(
-      'Cannot connect to backend.\nMake sure FastAPI server is running.',
-    );
-  } on AnalysisException {
-    rethrow;
-  } catch (_) {
-    throw const AnalysisException('Unable to load history. Please try again.');
+  } catch (e) {
+    throw AnalysisException('Error loading history: $e');
   }
 }
 
-Future<SessionDetailResult> fetchAnalysisSessionDetail(int sessionId) async {
+Future<AnalysisSessionDetail> fetchAnalysisSessionDetail(int sessionId) async {
   final uri = Uri.parse('${BackendConfig.baseUrl}/history/$sessionId');
-
   try {
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw const AnalysisException(
-        'Unable to load this session. Please try again.',
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+
+final sessionDetail = AnalysisSessionDetail.fromJson(json);
+      
+      final analysisJson = json['analysis_result'] is Map
+    ? Map<String, dynamic>.from(json['analysis_result'] as Map)
+    : <String, dynamic>{};
+
+final analysisResult = AnalysisResult.fromJson(
+  analysisJson,
+  sessionDetail.title,
+);
+
+      return AnalysisSessionDetail(
+        sessionId: sessionDetail.sessionId,
+        title: sessionDetail.title,
+        referenceVideoId: sessionDetail.referenceVideoId,
+        videoUserUrl: sessionDetail.videoUserUrl,
+        result: {
+          ...json,
+          'analysis_obj': analysisResult, 
+        },
       );
+    } else {
+      throw AnalysisException('Failed to fetch session detail.');
     }
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic> ||
-        decoded['analysis_result'] is! Map<String, dynamic>) {
-      throw const AnalysisException(
-        'Unable to load this session. Please try again.',
-      );
-    }
-
-    final result = AnalysisResult.fromJson(
-      Map<String, dynamic>.from(decoded['analysis_result'] as Map),
-      (decoded['session_name'] ?? '').toString(),
-    );
-
-    return SessionDetailResult(
-      result: result,
-      referenceVideoId: (decoded['reference_video_id'] as num?)?.toInt() ?? 0,
-      videoUserUrl: (decoded['video_user_url'] ?? '').toString(),
-    );
-  } on SocketException {
-    throw const AnalysisException(
-      'Cannot connect to backend.\nMake sure FastAPI server is running.',
-    );
-  } on AnalysisException {
-    rethrow;
-  } catch (_) {
-    throw const AnalysisException(
-      'Unable to load this session. Please try again.',
-    );
+  } catch (e) {
+    throw AnalysisException('Error fetching detail: $e');
   }
 }
 
-class SessionDetailResult {
-  final AnalysisResult result;
+Future<void> deleteAnalysisSession(int sessionId) async {
+  final uri = Uri.parse('${BackendConfig.baseUrl}/history/$sessionId');
+  try {
+    final response = await http.delete(uri);
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw AnalysisException('Failed to delete scan session.');
+    }
+  } catch (e) {
+    throw AnalysisException('Error deleting scan: $e');
+  }
+}
+
+class AnalysisSessionDetail {
+  final int sessionId;
+  final String title;
   final int referenceVideoId;
   final String videoUserUrl;
+  final Map<String, dynamic> result;
 
-  const SessionDetailResult({
-    required this.result,
+  const AnalysisSessionDetail({
+    required this.sessionId,
+    required this.title,
     required this.referenceVideoId,
     required this.videoUserUrl,
+    required this.result,
   });
+
+  factory AnalysisSessionDetail.fromJson(Map<String, dynamic> json) {
+    return AnalysisSessionDetail(
+      sessionId: (json['session_id'] as num?)?.toInt() ?? 0,
+      title: json['session_name'] as String? ?? json['title'] as String? ?? '',
+      referenceVideoId: (json['reference_video_id'] as num?)?.toInt() ?? 0,
+      videoUserUrl: json['video_user_url'] as String? ?? '',
+      result: json['result'] is Map<String, dynamic> 
+          ? json['result'] as Map<String, dynamic> 
+          : {},
+    );
+  }
 }
