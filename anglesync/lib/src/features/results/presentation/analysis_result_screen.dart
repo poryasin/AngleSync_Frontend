@@ -9,11 +9,19 @@ import '../widgets/save_session_dialog.dart';
 class AnalysisResultScreen extends StatelessWidget {
   final Stream<AnalysisEvent> analysisStream;
   final VoidCallback? onMismatch;
+  final int userId;
+  final int referenceVideoId;
+  final String videoUserUrl;
+  final bool isSavedSession;
 
   const AnalysisResultScreen({
     super.key,
     required this.analysisStream,
+    required this.userId,
+    required this.referenceVideoId,
+    required this.videoUserUrl,
     this.onMismatch,
+    this.isSavedSession = false,
   });
 
   @override
@@ -238,24 +246,51 @@ class AnalysisResultScreen extends StatelessWidget {
                           final sessionName = await SaveSessionDialog.show(
                             context,
                           );
-                          if (sessionName == null || !context.mounted)
-                            return; // user cancelled
+                          if (sessionName == null || !context.mounted) return;
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Saved as "$sessionName"'),
-                              duration: const Duration(seconds: 2),
+                          // แสดง loading ระหว่างรอ
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) => const Center(
+                              child: CircularProgressIndicator(),
                             ),
                           );
 
-                          await Future.delayed(const Duration(seconds: 2));
-
-                          if (context.mounted) {
-                            Navigator.pushNamedAndRemoveUntil(
-                              context,
-                              AppRouter.home,
-                              (route) => false,
+                          try {
+                            await saveAnalysisResult(
+                              sessionName: sessionName,
+                              result: result,
+                              userId: userId,
+                              referenceVideoId: referenceVideoId,
+                              videoUserUrl: videoUserUrl,
                             );
+
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Saved as "$sessionName"'),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+
+                            await Future.delayed(const Duration(seconds: 2));
+
+                            if (context.mounted) {
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                AppRouter.home,
+                                (route) => false,
+                              );
+                            }
+                          } on AnalysisException catch (e) {
+                            if (!context.mounted) return;
+                            Navigator.pop(context); // ปิด loading dialog
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(e.message)));
                           }
                         },
                         style: ElevatedButton.styleFrom(

@@ -20,19 +20,28 @@ class RiskGraph extends StatelessWidget {
 
   int get _peakIndex =>
       highestRiskFrameIndex >= 0 && highestRiskFrameIndex < _riskData.length
-      ? highestRiskFrameIndex
-      : 0;
+          ? highestRiskFrameIndex
+          : 0;
 
   double get _peakTime =>
       _peakIndex < frameTimes.length ? frameTimes[_peakIndex] : 0.0;
 
   double get _peakRisk => riskScores.isNotEmpty ? riskScores[_peakIndex] : 0.0;
 
+  // 💥 Helper ตรวจสอบว่า URL เป็น Web URL ที่ถูกต้อง ป้องกัน URI Error
+  bool _isValidWebUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return false;
+    final uri = Uri.tryParse(url.trim());
+    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https') && uri.hasAuthority;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_riskData.isEmpty) {
       return const Center(child: Text("No risk data"));
     }
+
+    final bool hasValidImageUrl = _isValidWebUrl(highestRiskImageUrl);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -71,7 +80,7 @@ class RiskGraph extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── Graph (ไม่มี GestureDetector แล้ว) ──
+          // ── Graph ──
           SizedBox(
             height: 200,
             child: Semantics(
@@ -148,7 +157,7 @@ class RiskGraph extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── Frame image ──
+          // ── Frame image (ปรับปรุงการดัก Error) ──
           Container(
             width: double.infinity,
             height: 220,
@@ -156,7 +165,7 @@ class RiskGraph extends StatelessWidget {
               color: Colors.black,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: highestRiskImageUrl != null
+            child: hasValidImageUrl
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(18),
                     child: GestureDetector(
@@ -174,8 +183,15 @@ class RiskGraph extends StatelessWidget {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(16),
                                     child: Image.network(
-                                      highestRiskImageUrl!,
+                                      highestRiskImageUrl!.trim(),
                                       fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => const Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: Colors.white38,
+                                          size: 48,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -207,7 +223,7 @@ class RiskGraph extends StatelessWidget {
                         children: [
                           Positioned.fill(
                             child: Image.network(
-                              highestRiskImageUrl!,
+                              highestRiskImageUrl!.trim(),
                               fit: BoxFit.cover,
                               loadingBuilder: (context, child, progress) {
                                 if (progress == null) return child;
@@ -217,13 +233,25 @@ class RiskGraph extends StatelessWidget {
                                   ),
                                 );
                               },
-                              errorBuilder: (_, __, ___) => const Center(
-                                child: Icon(
-                                  Icons.broken_image,
-                                  color: Colors.white38,
-                                  size: 48,
-                                ),
-                              ),
+                              errorBuilder: (_, error, ___) {
+                                return const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.broken_image,
+                                        color: Colors.white38,
+                                        size: 48,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        "Image not available",
+                                        style: TextStyle(color: Colors.white38, fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           Positioned(
@@ -247,10 +275,20 @@ class RiskGraph extends StatelessWidget {
                     ),
                   )
                 : const Center(
-                    child: Icon(
-                      Icons.image_not_supported_outlined,
-                      color: Colors.white38,
-                      size: 48,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.image_not_supported_outlined,
+                          color: Colors.white38,
+                          size: 48,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          "Frame image not found",
+                          style: TextStyle(color: Colors.white38, fontSize: 12),
+                        ),
+                      ],
                     ),
                   ),
           ),
@@ -265,18 +303,18 @@ class RiskGraph extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: const Color(0xFFFFCDD2)),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.warning_amber_rounded,
                   color: Color(0xFFE53935),
                   size: 18,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     "Tap the image above to inspect the frame in detail",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: Color(0xFFE53935),
                       fontWeight: FontWeight.w600,
@@ -292,7 +330,7 @@ class RiskGraph extends StatelessWidget {
   }
 }
 
-// ── Custom Painter — ไม่มี selectedIndex แล้ว ──
+// ── Custom Painter ──
 class _RiskChartPainter extends CustomPainter {
   final List<double> data;
   final int peakIndex;
@@ -312,7 +350,9 @@ class _RiskChartPainter extends CustomPainter {
   Offset _point(int i, Size size) {
     final graphW = size.width - leftPad - rightPad;
     final graphH = size.height - topPad - bottomPad;
-    final x = leftPad + (i / (data.length - 1)) * graphW;
+    final x = data.length > 1
+        ? leftPad + (i / (data.length - 1)) * graphW
+        : leftPad + graphW / 2;
     final y = topPad + graphH * (1 - data[i] / 100);
     return Offset(x, y);
   }
@@ -322,7 +362,6 @@ class _RiskChartPainter extends CustomPainter {
     final graphH = size.height - topPad - bottomPad;
     final bottomY = topPad + graphH;
 
-    // ── Gridlines ──
     final gridPaint = Paint()
       ..color = const Color(0xFFE5E5E5)
       ..strokeWidth = 1;
@@ -347,39 +386,41 @@ class _RiskChartPainter extends CustomPainter {
 
     final pts = List.generate(data.length, (i) => _point(i, size));
 
-    // ── Fill ──
-    final fillPath = Path()..moveTo(pts.first.dx, bottomY);
-    for (final p in pts) {
-      fillPath.lineTo(p.dx, p.dy);
-    }
-    fillPath.lineTo(pts.last.dx, bottomY);
-    fillPath.close();
-    canvas.drawPath(
-      fillPath,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.red.withOpacity(0.25), Colors.red.withOpacity(0.04)],
-        ).createShader(Rect.fromLTWH(0, topPad, size.width, graphH)),
-    );
+    if (pts.length > 1) {
+      final fillPath = Path()..moveTo(pts.first.dx, bottomY);
+      for (final p in pts) {
+        fillPath.lineTo(p.dx, p.dy);
+      }
+      fillPath.lineTo(pts.last.dx, bottomY);
+      fillPath.close();
+      canvas.drawPath(
+        fillPath,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.red.withOpacity(0.25),
+              Colors.red.withOpacity(0.04),
+            ],
+          ).createShader(Rect.fromLTWH(0, topPad, size.width, graphH)),
+      );
 
-    // ── Line ──
-    final linePath = Path()..moveTo(pts.first.dx, pts.first.dy);
-    for (int i = 1; i < pts.length; i++) {
-      linePath.lineTo(pts[i].dx, pts[i].dy);
+      final linePath = Path()..moveTo(pts.first.dx, pts.first.dy);
+      for (int i = 1; i < pts.length; i++) {
+        linePath.lineTo(pts[i].dx, pts[i].dy);
+      }
+      canvas.drawPath(
+        linePath,
+        Paint()
+          ..color = Colors.red.shade400
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round,
+      );
     }
-    canvas.drawPath(
-      linePath,
-      Paint()
-        ..color = Colors.red.shade400
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
 
-    // ── Peak dashed line ──
     final peakPt = pts[peakIndex];
     _drawDashed(
       canvas,
@@ -392,7 +433,6 @@ class _RiskChartPainter extends CustomPainter {
       gapLen: 4,
     );
 
-    // ── Peak label ──
     final peakTp = TextPainter(
       text: TextSpan(
         text: "Peak ${peakValue.toInt()}",
@@ -406,7 +446,6 @@ class _RiskChartPainter extends CustomPainter {
     )..layout();
     peakTp.paint(canvas, Offset(peakPt.dx - peakTp.width / 2, 4));
 
-    // ── Peak dot ──
     canvas.drawCircle(
       peakPt,
       8,
@@ -432,9 +471,11 @@ class _RiskChartPainter extends CustomPainter {
     double dashLen = 5,
     double gapLen = 4,
   }) {
+    final dist = (end - start).distance;
+    if (dist <= 0 || !dist.isFinite) return;
+
     final dx = end.dx - start.dx;
     final dy = end.dy - start.dy;
-    final dist = (end - start).distance;
     final step = dashLen + gapLen;
     final steps = (dist / step).floor();
     for (int i = 0; i <= steps; i++) {
