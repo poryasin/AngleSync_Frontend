@@ -1,4 +1,5 @@
 import 'package:anglesync/src/core/service/analysis_service.dart';
+import 'package:anglesync/src/features/history/domain/scan_history_item.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -40,5 +41,18 @@ void main() {
       expect(result.isExerciseMismatch, isFalse);
       expect(result.isDetectionFailure, isTrue);
     });
+  });
+
+  test('uses session_id from a history response', () {
+    final session = ScanHistoryItem.fromJson({
+      'session_id': 42,
+      'session_name': 'Squat form check',
+      'accuracy_score': 88,
+      'analysis_date': '2026-08-06T10:30:00Z',
+    });
+
+    expect(session.id, 42);
+    expect(session.title, 'Squat form check');
+    expect(session.score, 88);
   });
 }

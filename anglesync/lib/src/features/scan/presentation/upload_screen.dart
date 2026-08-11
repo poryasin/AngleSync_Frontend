@@ -208,6 +208,10 @@ class _UploadScreenState extends State<UploadScreen> {
         MaterialPageRoute(
           builder: (_) => AnalysisResultScreen(
             analysisStream: stream,
+            userId: 1,
+            referenceVideoId: widget.exercise.referenceVideoId,
+            videoUserUrl: _selectedVideo?.path ?? '',
+
             onMismatch: () {
               setState(() {
                 _selectedVideo = null;
@@ -249,7 +253,6 @@ class _UploadScreenState extends State<UploadScreen> {
                       selectedVideoName: _selectedVideoName,
                       selectedFileIsImage: _selectedFileIsImage,
                       onUploadTap: _pickVideo,
-                      // onSampleTap: _useSampleVideo,
                     ),
                     const SizedBox(height: 20),
                     _AnalyzeCard(
@@ -317,7 +320,6 @@ class _ReferenceSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Title + badge ──
         Row(
           children: [
             Expanded(
@@ -348,10 +350,7 @@ class _ReferenceSection extends StatelessWidget {
             ),
           ],
         ),
-
         const SizedBox(height: 14),
-
-        // ── Video ──
         ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: _InlineReferenceVideoPlayer(
@@ -359,10 +358,7 @@ class _ReferenceSection extends StatelessWidget {
             videoUrl: referenceVideoUrl,
           ),
         ),
-
         const SizedBox(height: 16),
-
-        // ── Instruction label ──
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -635,14 +631,12 @@ class _YourVideoSection extends StatelessWidget {
   final String? selectedVideoName;
   final bool selectedFileIsImage;
   final VoidCallback onUploadTap;
-  // final VoidCallback onSampleTap;
 
   const _YourVideoSection({
     required this.selectedVideo,
     required this.selectedVideoName,
     required this.selectedFileIsImage,
     required this.onUploadTap,
-    // required this.onSampleTap,
   });
 
   @override

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:anglesync/src/core/config/backend_config.dart';
+import 'package:anglesync/src/features/history/domain/scan_history_item.dart';
 
 // MODELS
 class AnalysisStep {
@@ -49,11 +50,13 @@ class SelectedFrame {
   final int frame;
   final double time;
   final double risk;
+  final String image;
 
   const SelectedFrame({
     required this.frame,
     required this.time,
     required this.risk,
+    required this.image,
   });
 
   factory SelectedFrame.fromJson(Map<String, dynamic> json) {
@@ -61,6 +64,7 @@ class SelectedFrame {
       frame: json['frame'] ?? 0,
       time: (json['time'] as num?)?.toDouble() ?? 0,
       risk: (json['risk'] as num?)?.toDouble() ?? 0,
+      image: json['image'] as String? ?? '',
     );
   }
 }
@@ -85,13 +89,11 @@ class AnalysisFeedback {
   static List<String> _toList(dynamic value) {
     if (value is List) return value.map((e) => e.toString()).toList();
     if (value is String && value.isNotEmpty) {
-      // ลบ [ ] และ '
       final cleaned = value
           .replaceAll(RegExp(r'^\[|\]$'), '')
           .replaceAll("'", '')
           .trim();
 
-      // ถ้ามี comma ให้ split ด้วย comma ก่อน
       if (cleaned.contains(',')) {
         return cleaned
             .split(RegExp(r',\s*'))
@@ -100,7 +102,6 @@ class AnalysisFeedback {
             .toList();
       }
 
-      // ถ้าเป็น numbered list เช่น "1. xxx 2. xxx"
       if (RegExp(r'\d+\.').hasMatch(cleaned)) {
         return cleaned
             .split(RegExp(r'(?=\d+\.\s)'))
@@ -109,7 +110,6 @@ class AnalysisFeedback {
             .toList();
       }
 
-      // ถ้าเป็น sentence หลายประโยคคั่นด้วย '. '
       return cleaned
           .split(RegExp(r'\.\s+(?=[A-Z])'))
           .map((s) => s.endsWith('.') ? s : '$s.')
@@ -131,6 +131,59 @@ class AnalysisFeedback {
   }
 }
 
+class JointCoordinate {
+  final String? jointName;
+  final double? x;
+  final double? y;
+
+  const JointCoordinate({this.jointName, this.x, this.y});
+
+  factory JointCoordinate.fromJson(Map<String, dynamic> json) {
+    return JointCoordinate(
+      jointName: json['joint_name'] as String?,
+      x: (json['x'] as num?)?.toDouble(),
+      y: (json['y'] as num?)?.toDouble(),
+    );
+  }
+}
+
+class RiskFrame {
+  final int frameId;
+  final int sessionId;
+  final int frameNumber;
+  final double riskPercentage;
+  final String? skeletonOverlayUrl;
+  final List<JointCoordinate>? jointCoordinates;
+
+  const RiskFrame({
+    required this.frameId,
+    required this.sessionId,
+    required this.frameNumber,
+    required this.riskPercentage,
+    this.skeletonOverlayUrl,
+    this.jointCoordinates,
+  });
+
+  factory RiskFrame.fromJson(Map<String, dynamic> json) {
+    final jointsJson = json['joint_coordinates'];
+    return RiskFrame(
+      frameId: (json['frame_id'] as num?)?.toInt() ?? 0,
+      sessionId: (json['session_id'] as num?)?.toInt() ?? 0,
+      frameNumber: (json['frame_number'] as num?)?.toInt() ?? 0,
+      riskPercentage: (json['risk_percentage'] as num?)?.toDouble() ?? 0,
+      skeletonOverlayUrl: json['skeleton_overlay_url'] as String?,
+      jointCoordinates: jointsJson is List
+          ? jointsJson
+                .whereType<Map>()
+                .map(
+                  (e) => JointCoordinate.fromJson(Map<String, dynamic>.from(e)),
+                )
+                .toList()
+          : null,
+    );
+  }
+}
+
 class AnalysisResult {
   final double score;
   final int scoreScale;
@@ -144,6 +197,7 @@ class AnalysisResult {
   final List<double> frameTimes;
   final int highestRiskFrameIndex;
   final String? highestRiskImageUrl;
+  final List<RiskFrame> riskFrames;
 
   const AnalysisResult({
     required this.score,
@@ -156,6 +210,7 @@ class AnalysisResult {
     required this.exerciseName,
     this.riskScores = const [],
     this.frameTimes = const [],
+    this.riskFrames = const [],
     this.highestRiskFrameIndex = 0,
     this.highestRiskImageUrl,
   });
@@ -175,19 +230,44 @@ class AnalysisResult {
         ? json['graph_data'] as Map<String, dynamic>
         : <String, dynamic>{};
 
-    final rawScores = graphData['risk_scores'];
+    final rawRiskFrames = json['risk_frames'] is List
+        ? json['risk_frames'] as List
+        : const [];
+    final riskFrames = rawRiskFrames
+        .whereType<Map>()
+        .map((e) => RiskFrame.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    final rawScores =
+        graphData['risk_scores'] ??
+        riskFrames.map((f) => f.riskPercentage).toList();
     final riskScores = rawScores is List
         ? rawScores.map((e) => (e as num).toDouble()).toList()
         : <double>[];
 
-    final rawTimes = graphData['frame_times'];
+    final rawTimes =
+        graphData['frame_times'] ??
+        riskFrames.map((f) => f.frameNumber).toList();
     final frameTimes = rawTimes is List
         ? rawTimes.map((e) => (e as num).toDouble()).toList()
         : <double>[];
 
+    final highestIndex =
+        (graphData['highest_risk_frame_index'] as num?)?.toInt() ??
+        _highestRiskIndex(riskScores);
+    final fallbackImageUrl =
+        riskFrames.isNotEmpty && highestIndex < riskFrames.length
+        ? riskFrames[highestIndex].skeletonOverlayUrl
+        : null;
+
     return AnalysisResult(
-      score: (json['score'] as num?)?.toDouble() ?? 0,
-      scoreScale: (json['score_scale'] as num?)?.toInt() ?? 10,
+      score:
+          (json['score'] as num?)?.toDouble() ??
+          (json['accuracy_score'] as num?)?.toDouble() ??
+          0,
+      scoreScale:
+          (json['score_scale'] as num?)?.toInt() ??
+          (json.containsKey('accuracy_score') ? 100 : 10),
       canAnalyze: json['can_analyze'] as bool? ?? true,
       status: json['status'] as String? ?? 'completed',
       riskLevel: json['risk_level'] as String? ?? '',
@@ -200,10 +280,19 @@ class AnalysisResult {
       exerciseName: exerciseName,
       riskScores: riskScores,
       frameTimes: frameTimes,
-      highestRiskFrameIndex:
-          (graphData['highest_risk_frame_index'] as num?)?.toInt() ?? 0,
-      highestRiskImageUrl: graphData['highest_risk_image_url'] as String?,
+      highestRiskFrameIndex: highestIndex,
+      highestRiskImageUrl:
+          graphData['highest_risk_image_url'] as String? ?? fallbackImageUrl,
+      riskFrames: riskFrames,
     );
+  }
+  static int _highestRiskIndex(List<double> riskScores) {
+    if (riskScores.isEmpty) return 0;
+    var highestIndex = 0;
+    for (var index = 1; index < riskScores.length; index++) {
+      if (riskScores[index] > riskScores[highestIndex]) highestIndex = index;
+    }
+    return highestIndex;
   }
 }
 
@@ -347,44 +436,181 @@ class AnalysisException implements Exception {
   String toString() => message;
 }
 
-
-
+// 💥 แก้ไขฟังก์ชัน saveAnalysisResult
 Future<Map<String, dynamic>> saveAnalysisResult({
-    required String sessionName,
-    required AnalysisResult result,
-  }) async {
-    final uri = Uri.parse('${BackendConfig.baseUrl}/analysis/save');
+  required String sessionName,
+  required AnalysisResult result,
+  required int userId,
+  required int referenceVideoId,
+  required String videoUserUrl,
+}) async {
+  final uri = Uri.parse('${BackendConfig.baseUrl}/save-analyze');
+  try {
+    // แปลง riskFrames จาก AnalysisResult ให้เป็น List<Map>
+    final riskFramesPayload = result.riskFrames.map((frame) {
+      return {
+        'frame_number': frame.frameNumber,
+        'risk_percentage': frame.riskPercentage,
+        'highest_risk_image_url':
+            frame.skeletonOverlayUrl ?? result.highestRiskImageUrl ?? '',
+        'joint_coordinates':
+            frame.jointCoordinates
+                ?.map((j) => {'joint_name': j.jointName, 'x': j.x, 'y': j.y})
+                .toList() ??
+            [],
+      };
+    }).toList();
 
-    try {
-      final response = await http
-          .post(
-            uri,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'session_name': sessionName,
-              'accuracy_score': result.score,
-              'feedback': {
-                'form_summary': result.feedback?.formSummary,
-                'injury_risk': result.feedback?.injuryRisk,
-                'corrective_cues': result.feedback?.correctiveCues,
-                'practice_plan': result.feedback?.practicePlan,
-              },
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
+    // Fallback ถ้าไม่มี riskFrames ให้ดึงจาก selectedFrame ตัวหลัก
+    if (riskFramesPayload.isEmpty && result.selectedFrame != null) {
+      riskFramesPayload.add({
+        'frame_number': result.selectedFrame!.frame,
+        'risk_percentage': result.selectedFrame!.risk,
+        'highest_risk_image_url': result.selectedFrame!.image.isNotEmpty
+            ? result.selectedFrame!.image
+            : (result.highestRiskImageUrl ?? ''),
+      });
+    }
 
-      if (response.statusCode != 200) {
-        throw const AnalysisException('Unable to save result. Please try again.');
-      }
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_id': userId,
+            'session_name': sessionName,
+            'reference_video_id': referenceVideoId,
+            'video_user_url': videoUserUrl,
+            'accuracy_score': result.score,
+            'risk_frames': riskFramesPayload,
+            'feedback': {
+              'form_summary': result.feedback?.formSummary ?? '',
+              'injury_risk': result.feedback?.injuryRisk ?? [],
+              'corrective_cues': result.feedback?.correctiveCues ?? [],
+              'practice_plan': result.feedback?.practicePlan ?? [],
+            },
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
 
-      return jsonDecode(response.body) as Map<String, dynamic>;
-    } on SocketException {
-      throw const AnalysisException(
-        'Cannot connect to backend.\nMake sure FastAPI server is running.',
-      );
-    } on AnalysisException {
-      rethrow;
-    } catch (e) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw const AnalysisException('Unable to save result. Please try again.');
     }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  } on SocketException {
+    throw const AnalysisException(
+      'Cannot connect to backend.\nMake sure FastAPI server is running.',
+    );
+  } on AnalysisException {
+    rethrow;
+  } catch (e) {
+    throw const AnalysisException('Unable to save result. Please try again.');
   }
+}
+
+Future<List<ScanHistoryItem>> fetchAnalysisHistory() async {
+  final uri = Uri.parse('${BackendConfig.baseUrl}/history?sort_order=desc');
+
+  try {
+    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw const AnalysisException(
+        'Unable to load history. Please try again.',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    final records = decoded is List
+        ? decoded
+        : decoded is Map<String, dynamic>
+        ? decoded['data'] ??
+              decoded['sessions'] ??
+              decoded['history'] ??
+              const []
+        : const [];
+
+    if (records is! List) {
+      throw const AnalysisException(
+        'Unable to load history. Please try again.',
+      );
+    }
+
+    final sessions = records
+        .whereType<Map>()
+        .map(
+          (record) =>
+              ScanHistoryItem.fromJson(Map<String, dynamic>.from(record)),
+        )
+        .toList();
+    sessions.sort((a, b) {
+      final aDate = a.analysisDate?.millisecondsSinceEpoch ?? 0;
+      final bDate = b.analysisDate?.millisecondsSinceEpoch ?? 0;
+      return bDate.compareTo(aDate);
+    });
+    return sessions;
+  } on SocketException {
+    throw const AnalysisException(
+      'Cannot connect to backend.\nMake sure FastAPI server is running.',
+    );
+  } on AnalysisException {
+    rethrow;
+  } catch (_) {
+    throw const AnalysisException('Unable to load history. Please try again.');
+  }
+}
+
+Future<SessionDetailResult> fetchAnalysisSessionDetail(int sessionId) async {
+  final uri = Uri.parse('${BackendConfig.baseUrl}/history/$sessionId');
+
+  try {
+    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw const AnalysisException(
+        'Unable to load this session. Please try again.',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic> ||
+        decoded['analysis_result'] is! Map<String, dynamic>) {
+      throw const AnalysisException(
+        'Unable to load this session. Please try again.',
+      );
+    }
+
+    final result = AnalysisResult.fromJson(
+      Map<String, dynamic>.from(decoded['analysis_result'] as Map),
+      (decoded['session_name'] ?? '').toString(),
+    );
+
+    return SessionDetailResult(
+      result: result,
+      referenceVideoId: (decoded['reference_video_id'] as num?)?.toInt() ?? 0,
+      videoUserUrl: (decoded['video_user_url'] ?? '').toString(),
+    );
+  } on SocketException {
+    throw const AnalysisException(
+      'Cannot connect to backend.\nMake sure FastAPI server is running.',
+    );
+  } on AnalysisException {
+    rethrow;
+  } catch (_) {
+    throw const AnalysisException(
+      'Unable to load this session. Please try again.',
+    );
+  }
+}
+
+class SessionDetailResult {
+  final AnalysisResult result;
+  final int referenceVideoId;
+  final String videoUserUrl;
+
+  const SessionDetailResult({
+    required this.result,
+    required this.referenceVideoId,
+    required this.videoUserUrl,
+  });
+}
