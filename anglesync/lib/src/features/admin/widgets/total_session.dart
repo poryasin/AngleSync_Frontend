@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/admin_session.dart';
 import '/src/core/service/admin_api_service.dart';
+import '/src/core/theme/app_theme.dart';
 
 class TotalSessions extends StatefulWidget {
   final int adminUserId;
@@ -64,6 +65,16 @@ class _TotalSessionsState extends State<TotalSessions> {
       initialDate: _filterDate ?? now,
       firstDate: DateTime(now.year - 5),
       lastDate: now,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppTheme.green),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -93,7 +104,12 @@ class _TotalSessionsState extends State<TotalSessions> {
           children: [
             const Text(
               'Analysis Sessions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textDark,
+                letterSpacing: -0.3,
+              ),
             ),
             const Spacer(),
             IconButton(
@@ -104,18 +120,24 @@ class _TotalSessionsState extends State<TotalSessions> {
                 _sortOrder == 'asc'
                     ? Icons.arrow_upward
                     : Icons.arrow_downward,
+                color: AppTheme.green,
+                size: 20,
               ),
               onPressed: _toggleSortOrder,
             ),
             IconButton(
               tooltip: 'Filter by date',
-              icon: const Icon(Icons.calendar_today),
+              icon: const Icon(
+                Icons.calendar_today,
+                color: AppTheme.green,
+                size: 20,
+              ),
               onPressed: _pickDate,
             ),
             if (_filterDate != null)
               IconButton(
                 tooltip: 'Clear date filter',
-                icon: const Icon(Icons.clear),
+                icon: Icon(Icons.clear, color: Colors.grey.shade500, size: 20),
                 onPressed: _clearDateFilter,
               ),
           ],
@@ -126,9 +148,10 @@ class _TotalSessionsState extends State<TotalSessions> {
             child: Text(
               'Filtered by: '
               '${_filterDate!.toLocal().toString().split(' ').first}',
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
             ),
           ),
+        const SizedBox(height: 8),
         _buildContent(),
       ],
     );
@@ -138,7 +161,9 @@ class _TotalSessionsState extends State<TotalSessions> {
     if (_isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(
+          child: CircularProgressIndicator(color: AppTheme.green),
+        ),
       );
     }
 
@@ -153,7 +178,11 @@ class _TotalSessionsState extends State<TotalSessions> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            TextButton(onPressed: _loadSessions, child: const Text('Retry')),
+            TextButton(
+              onPressed: _loadSessions,
+              style: TextButton.styleFrom(foregroundColor: AppTheme.green),
+              child: const Text('Retry'),
+            ),
           ],
         ),
       );
@@ -165,7 +194,9 @@ class _TotalSessionsState extends State<TotalSessions> {
           : 'No sessions yet.';
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: Text(message)),
+        child: Center(
+          child: Text(message, style: TextStyle(color: Colors.grey.shade500)),
+        ),
       );
     }
 
@@ -173,18 +204,94 @@ class _TotalSessionsState extends State<TotalSessions> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _sessions.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final session = _sessions[index];
-        return ListTile(
-          title: Text(session.sessionName),
-          subtitle: Text(
-            session.analysisDate != null
-                ? session.analysisDate!.toLocal().toString().split('.').first
-                : 'Unknown date',
-          ),
+        return _SessionCard(
+          title: session.sessionName,
+          subtitle: session.analysisDate != null
+              ? session.analysisDate!.toLocal().toString().split('.').first
+              : 'Unknown date',
         );
       },
+    );
+  }
+}
+
+// การ์ด session แต่ละแถว พร้อม press effect (เงาเข้มขึ้น + ยุบตัวลงนิดหน่อยตอนกด)
+class _SessionCard extends StatefulWidget {
+  final String title;
+  final String subtitle;
+
+  const _SessionCard({required this.title, required this.subtitle});
+
+  @override
+  State<_SessionCard> createState() => _SessionCardState();
+}
+
+class _SessionCardState extends State<_SessionCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        transform: Matrix4.identity()..scale(_pressed ? 0.98 : 1.0),
+        transformAlignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(_pressed ? 0.12 : 0.05),
+              blurRadius: _pressed ? 6 : 10,
+              offset: Offset(0, _pressed ? 1 : 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: AppTheme.green,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

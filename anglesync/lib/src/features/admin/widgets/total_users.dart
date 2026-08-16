@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '/src/core/service/admin_api_service.dart';
+import '/src/core/theme/app_theme.dart';
 
 class TotalUsers extends StatefulWidget {
   final int adminUserId;
@@ -58,7 +59,9 @@ class _TotalUsersState extends State<TotalUsers> {
     if (_isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(
+          child: CircularProgressIndicator(color: AppTheme.green),
+        ),
       );
     }
 
@@ -75,6 +78,7 @@ class _TotalUsersState extends State<TotalUsers> {
             const SizedBox(height: 8),
             TextButton(
               onPressed: _loadSummary,
+              style: TextButton.styleFrom(foregroundColor: AppTheme.green),
               child: const Text('Retry'),
             ),
           ],
@@ -82,6 +86,7 @@ class _TotalUsersState extends State<TotalUsers> {
       );
     }
 
+    // Row เดียวกัน ความสูงเท่ากันแน่นอนด้วย fixed height
     return Row(
       children: [
         Expanded(
@@ -102,32 +107,68 @@ class _TotalUsersState extends State<TotalUsers> {
   }
 }
 
-class _StatCard extends StatelessWidget {
+// การ์ดสถิติ: label อยู่บน, ตัวเลขอยู่ล่าง, ขนาดเท่ากันทุกกล่อง (fixed height)
+// พร้อม press effect (เงาเข้มขึ้น + ยุบตัวลงนิดหน่อยตอนกด) ใช้งานได้จริงบนมือถือ
+class _StatCard extends StatefulWidget {
   final String label;
   final String value;
 
   const _StatCard({required this.label, required this.value});
 
   @override
+  State<_StatCard> createState() => _StatCardState();
+}
+
+class _StatCardState extends State<_StatCard> {
+  bool _pressed = false;
+
+  static const double _cardHeight = 110;
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      child: Padding(
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        height: _cardHeight,
+        width: double.infinity,
         padding: const EdgeInsets.all(16),
+        transform: Matrix4.identity()..scale(_pressed ? 0.98 : 1.0),
+        transformAlignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(_pressed ? 0.12 : 0.05),
+              blurRadius: _pressed ? 6 : 10,
+              offset: Offset(0, _pressed ? 1 : 2),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              value,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+              widget.label,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 4),
             Text(
-              label,
-              style: const TextStyle(color: Colors.grey),
+              widget.value,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.green,
+                letterSpacing: -0.5,
+              ),
             ),
           ],
         ),

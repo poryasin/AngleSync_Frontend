@@ -6,13 +6,14 @@ import '../../../core/theme/app_theme.dart';
 import '../widgets/risk_graph.dart';
 import '../widgets/save_session_dialog.dart';
 
-class AnalysisResultScreen extends StatelessWidget {
+class AnalysisResultScreen extends StatefulWidget {
   final Stream<AnalysisEvent> analysisStream;
   final VoidCallback? onMismatch;
   final int userId;
   final int referenceVideoId;
   final String videoUserUrl;
   final bool isSavedSession;
+  final int? sessionId;
 
   const AnalysisResultScreen({
     super.key,
@@ -22,79 +23,120 @@ class AnalysisResultScreen extends StatelessWidget {
     required this.videoUserUrl,
     this.onMismatch,
     this.isSavedSession = false,
+    this.sessionId,
   });
+
+  @override
+  State<AnalysisResultScreen> createState() => _AnalysisResultScreenState();
+}
+
+class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
+  // true ระหว่างกำลังลบ session -> โชว์ overlay ทับหน้าจอเดิม แทนการ push dialog แยก route
+  bool _isDeleting = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7F4),
       body: SafeArea(
-        child: StreamBuilder<AnalysisEvent>(
-          stream: analysisStream,
-          builder: (context, snapshot) {
-            //
-            // LOADING
-            //
-            if (!snapshot.hasData) {
-              return _buildProgress(context, 'Uploading video...', 10);
-            }
+        child: Stack(
+          children: [
+            StreamBuilder<AnalysisEvent>(
+              stream: widget.analysisStream,
+              builder: (context, snapshot) {
+                //
+                // LOADING
+                //
+                if (!snapshot.hasData) {
+                  return _buildProgress(context, 'Uploading video...', 10);
+                }
 
-            final event = snapshot.data!;
+                final event = snapshot.data!;
 
-            //
-            // STEP / PROGRESS
-            //
-            if (event is StepEvent) {
-              return _buildProgress(
-                context,
-                event.step.message,
-                event.step.percent,
-              );
-            }
+                //
+                // STEP / PROGRESS
+                //
+                if (event is StepEvent) {
+                  return _buildProgress(
+                    context,
+                    event.step.message,
+                    event.step.percent,
+                  );
+                }
 
-            if (event is ProgressEvent) {
-              return _buildProgress(
-                context,
-                event.step.message,
-                event.step.percent,
-              );
-            }
+                if (event is ProgressEvent) {
+                  return _buildProgress(
+                    context,
+                    event.step.message,
+                    event.step.percent,
+                  );
+                }
 
-            //
-            // ERROR
-            //
-            if (event is ErrorEvent) {
-              if (_isDetectionFailureMessage(event.message)) {
-                return _buildDetectionFailure(context);
-              }
+                //
+                // ERROR
+                //
+                if (event is ErrorEvent) {
+                  if (_isDetectionFailureMessage(event.message)) {
+                    return _buildDetectionFailure(context);
+                  }
 
-              return _buildError(context, event.message);
-            }
+                  return _buildError(context, event.message);
+                }
 
-            //
-            // RESULT
-            //
-            if (event is ResultEvent) {
-              if (event.result.isExerciseMismatch) {
-                return _buildExerciseMismatch(context, event.result);
-              }
+                //
+                // RESULT
+                //
+                if (event is ResultEvent) {
+                  if (event.result.isExerciseMismatch) {
+                    return _buildExerciseMismatch(context, event.result);
+                  }
 
-              if (event.result.isDetectionFailure) {
-                return _buildDetectionFailure(context);
-              }
+                  if (event.result.isDetectionFailure) {
+                    return _buildDetectionFailure(context);
+                  }
 
-              if (event.result.hasFeedbackError) {
-                return _buildError(
-                  context,
-                  'Analysis failed. Please try again later.',
-                );
-              }
+                  if (event.result.hasFeedbackError) {
+                    return _buildError(
+                      context,
+                      'Analysis failed. Please try again later.',
+                    );
+                  }
 
-              return _buildResult(context, event.result);
-            }
+                  return _buildResult(context, event.result);
+                }
 
-            return _buildProgress(context, 'Analyzing posture...', 0);
-          },
+                return _buildProgress(context, 'Analyzing posture...', 0);
+              },
+            ),
+
+            // Overlay ตอนกำลังลบ (แทนการ push dialog แยก route)
+            if (_isDeleting)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.35),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 22,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: AppTheme.green),
+                          SizedBox(width: 18),
+                          Text('Deleting result...'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -104,57 +146,52 @@ class AnalysisResultScreen extends StatelessWidget {
   // PROGRESS
   //
   Widget _buildProgress(BuildContext context, String message, int percent) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F7F4),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _appBar(context),
+    return Column(
+      children: [
+        _appBar(context),
 
-            const Divider(height: 1),
+        const Divider(height: 1),
 
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 90,
-                      height: 90,
-                      child: CircularProgressIndicator(
-                        value: percent / 100,
-                        strokeWidth: 7,
-                        color: AppTheme.green,
-                      ),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    Text(
-                      '$percent%',
-                      style: const TextStyle(
-                        fontSize: 42,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Text(
-                      message,
-                      style: TextStyle(
-                        fontSize: 17,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 90,
+                  height: 90,
+                  child: CircularProgressIndicator(
+                    value: percent / 100,
+                    strokeWidth: 7,
+                    color: AppTheme.green,
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 30),
+
+                Text(
+                  '$percent%',
+                  style: const TextStyle(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 17,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -162,166 +199,245 @@ class AnalysisResultScreen extends StatelessWidget {
   // RESULT
   //
   Widget _buildResult(BuildContext context, AnalysisResult result) {
-    final feedback = result.feedback;
+    return Column(
+      children: [
+        // APP BAR
+        _appBar(context),
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F7F4),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // APP BAR
-            _appBar(context),
+        const Divider(height: 1, thickness: 1),
 
-            const Divider(height: 1, thickness: 1),
+        // BODY
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildScoreCard(result),
 
-            // BODY
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildScoreCard(result),
+                const SizedBox(height: 20),
+                if (result.riskScores.isNotEmpty)
+                  RiskGraph(
+                    riskScores: result.riskScores,
+                    frameTimes: result.frameTimes,
+                    highestRiskFrameIndex: result.highestRiskFrameIndex,
+                    highestRiskImageUrl: result.highestRiskImageUrl,
+                  ),
 
-                    const SizedBox(height: 20),
-                    if (result.riskScores.isNotEmpty)
-                      RiskGraph(
-                        riskScores: result.riskScores,
-                        frameTimes: result.frameTimes,
-                        highestRiskFrameIndex: result.highestRiskFrameIndex,
-                        highestRiskImageUrl: result.highestRiskImageUrl,
-                      ),
+                if (result.riskScores.isNotEmpty) const SizedBox(height: 20),
 
-                    if (result.riskScores.isNotEmpty)
-                      const SizedBox(height: 20),
-
-                    // Form Summary
-                    _buildFeedbackCard(
-                      title: 'Form Summary',
-                      items: [],
-                      icon: Icons.assignment_outlined,
-                      customContent: Text(
-                        result.feedback?.formSummary ?? '',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF444444),
-                          height: 1.6,
-                        ),
-                      ),
+                // Form Summary
+                _buildFeedbackCard(
+                  title: 'Form Summary',
+                  items: const [],
+                  icon: Icons.assignment_outlined,
+                  customContent: Text(
+                    result.feedback?.formSummary ?? '',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF444444),
+                      height: 1.6,
                     ),
-                    const SizedBox(height: 12),
-
-                    // Injury Risk
-                    _buildFeedbackCard(
-                      title: 'Injury Risk',
-                      items: result.feedback?.injuryRisk ?? [],
-                      icon: Icons.shield_outlined,
-                      iconColor: const Color(0xFFE53935),
-                      iconBg: const Color(0xFFFFECEC),
-                      useBullet: true,
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Corrective Cues
-                    _buildFeedbackCard(
-                      title: 'Corrective Cues',
-                      items: result.feedback?.correctiveCues ?? [],
-                      icon: Icons.track_changes_outlined,
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Practice Plan
-                    _buildFeedbackCard(
-                      title: 'Practice Plan',
-                      items: result.feedback?.practicePlan ?? [],
-                      icon: Icons.calendar_today_outlined,
-                    ),
-                    const SizedBox(height: 24),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 58,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          final sessionName = await SaveSessionDialog.show(
-                            context,
-                          );
-                          if (sessionName == null || !context.mounted) return;
-
-                          // แสดง loading ระหว่างรอ
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (_) => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
-
-                          try {
-                            await saveAnalysisResult(
-                              sessionName: sessionName,
-                              result: result,
-                              userId: userId,
-                              referenceVideoId: referenceVideoId,
-                              videoUserUrl: videoUserUrl,
-                            );
-
-                            if (!context.mounted) return;
-                            Navigator.pop(context);
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Saved as "$sessionName"'),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-
-                            await Future.delayed(const Duration(seconds: 2));
-
-                            if (context.mounted) {
-                              Navigator.pushNamedAndRemoveUntil(
-                                context,
-                                AppRouter.home,
-                                (route) => false,
-                              );
-                            }
-                          } on AnalysisException catch (e) {
-                            if (!context.mounted) return;
-                            Navigator.pop(context); // ปิด loading dialog
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text(e.message)));
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.green,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        icon: const Icon(Icons.save, color: Colors.white),
-                        label: const Text(
-                          "Save Result",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+
+                // Injury Risk
+                _buildFeedbackCard(
+                  title: 'Injury Risk',
+                  items: result.feedback?.injuryRisk ?? [],
+                  icon: Icons.shield_outlined,
+                  iconColor: const Color(0xFFE53935),
+                  iconBg: const Color(0xFFFFECEC),
+                  useBullet: true,
+                ),
+                const SizedBox(height: 12),
+
+                // Corrective Cues
+                _buildFeedbackCard(
+                  title: 'Corrective Cues',
+                  items: result.feedback?.correctiveCues ?? [],
+                  icon: Icons.track_changes_outlined,
+                ),
+                const SizedBox(height: 12),
+
+                // Practice Plan
+                _buildFeedbackCard(
+                  title: 'Practice Plan',
+                  items: result.feedback?.practicePlan ?? [],
+                  icon: Icons.calendar_today_outlined,
+                ),
+                const SizedBox(height: 24),
+
+                _buildResultActionButton(context, result),
+
+                const SizedBox(height: 32),
+              ],
             ),
-          ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResultActionButton(BuildContext context, AnalysisResult result) {
+    if (widget.isSavedSession) {
+      return SizedBox(
+        width: double.infinity,
+        height: 58,
+        child: ElevatedButton.icon(
+          onPressed: _isDeleting ? null : () => _handleDeleteResult(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFE53935),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
+          icon: const Icon(Icons.delete_outline, color: Colors.white),
+          label: const Text(
+            "Delete Result",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: ElevatedButton.icon(
+        onPressed: () async {
+          final sessionName = await SaveSessionDialog.show(context);
+          if (sessionName == null || !context.mounted) return;
+
+          // แสดง loading ระหว่างรอ
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => const Center(child: CircularProgressIndicator()),
+          );
+
+          try {
+            await saveAnalysisResult(
+              sessionName: sessionName,
+              result: result,
+              userId: widget.userId,
+              referenceVideoId: widget.referenceVideoId,
+              videoUserUrl: widget.videoUserUrl,
+            );
+
+            if (!context.mounted) return;
+            Navigator.pop(context);
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Saved as "$sessionName"'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+
+            await Future.delayed(const Duration(seconds: 2));
+
+            if (context.mounted) {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRouter.home,
+                (route) => false,
+              );
+            }
+          } on AnalysisException catch (e) {
+            if (!context.mounted) return;
+            Navigator.pop(context); // ปิด loading dialog
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(e.message)));
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.green,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+        ),
+        icon: const Icon(Icons.save, color: Colors.white),
+        label: const Text(
+          "Save Result",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _handleDeleteResult(BuildContext context) async {
+    final id = widget.sessionId;
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot delete: session ID is missing.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete result?'),
+        content: const Text(
+          'This analysis session will be permanently deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // เปิด overlay ในหน้าเดิม แทนการ push dialog เป็น route ใหม่
+    setState(() => _isDeleting = true);
+
+    try {
+      await deleteAnalysisSession(id);
+      if (!mounted) return;
+
+      // ปิด overlay ก่อน แล้วรอ 1 เฟรมให้หน้าจอ render กลับมาปกติ
+      // ก่อนค่อย pop กันปัญหา compositor เจอ overlay ซ้อนกับ transition
+      setState(() => _isDeleting = false);
+      await Future.delayed(const Duration(milliseconds: 50));
+      if (!mounted) return;
+
+      Navigator.of(context).pop(true);
+    } on AnalysisException catch (error) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete: ${error.message}')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete: $error')));
+    }
   }
 
   //
@@ -606,86 +722,81 @@ class AnalysisResultScreen extends StatelessWidget {
     required String title,
     required String message,
   }) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F7F4),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _appBar(context),
-            const Divider(height: 1),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(28),
+    return Column(
+      children: [
+        _appBar(context),
+        const Divider(height: 1),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.orange,
+                      size: 44,
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          color: Colors.orange,
-                          size: 44,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
+                    const SizedBox(height: 16),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      message,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          widget.onMismatch?.call(); // clear video in UploadScreen
+                          Navigator.pop(context); // back to UploadScreen
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.green,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          message,
+                        child: const Text(
+                          'Choose another video',
                           style: TextStyle(
-                            color: Colors.grey.shade700,
+                            color: Colors.white,
                             fontSize: 16,
-                            height: 1.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              onMismatch?.call(); // clear video in UploadScreen
-                              Navigator.pop(context); // back to UploadScreen
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.green,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                            ),
-                            child: const Text(
-                              'Choose another video',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -693,30 +804,25 @@ class AnalysisResultScreen extends StatelessWidget {
   // ERROR
   //
   Widget _buildError(BuildContext context, String error) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F7F4),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _appBar(context),
+    return Column(
+      children: [
+        _appBar(context),
 
-            const Divider(height: 1),
+        const Divider(height: 1),
 
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    error,
-                    style: const TextStyle(color: Colors.red, fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                error,
+                style: const TextStyle(color: Colors.red, fontSize: 16),
+                textAlign: TextAlign.center,
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 

@@ -29,7 +29,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     super.initState();
     _historyFuture = _loadHistory();
     _searchController.addListener(() {
-      setState(() => _searchQuery = _searchController.text.trim().toLowerCase());
+      setState(
+        () => _searchQuery = _searchController.text.trim().toLowerCase(),
+      );
     });
   }
 
@@ -99,9 +101,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: AppTheme.green,
-                ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppTheme.green),
           ),
           child: child!,
         );
@@ -123,7 +125,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     if (picked != null) {
-      setState(() => _selectedDateRange = DateTimeRange(start: picked, end: picked));
+      setState(
+        () => _selectedDateRange = DateTimeRange(start: picked, end: picked),
+      );
     }
   }
 
@@ -145,60 +149,79 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _openSession(ScanHistoryItem session) async {
-  if (session.id == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Session ID is missing from the history response.'),
-      ),
-    );
-    return;
-  }
+    if (session.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Session ID is missing from the history response.'),
+        ),
+      );
+      return;
+    }
 
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const Center(child: CircularProgressIndicator()),
-  );
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final detail = await fetchAnalysisSessionDetail(session.id!);
+      if (!mounted) return;
+      Navigator.pop(context); // ปิด Dialog Loading
+
+      // ดึง AnalysisResult ออกมา
+      final AnalysisResult analysisResult =
+          detail.result['analysis_obj'] is AnalysisResult
+          ? detail.result['analysis_obj'] as AnalysisResult
+          : AnalysisResult.fromJson(detail.result, detail.title);
+
+      final deleted = await Navigator.push<bool>(
+  context,
+  MaterialPageRoute(
+    builder: (_) => AnalysisResultScreen(
+      analysisStream: Stream<AnalysisEvent>.multi((controller) {
+        controller.add(ResultEvent(analysisResult));
+        controller.close();
+      }),
+      userId: 1,
+      referenceVideoId: detail.referenceVideoId,
+      videoUserUrl: detail.videoUserUrl,
+      isSavedSession: true,
+      sessionId: detail.sessionId,
+    ),
+  ),
+);
+
+if (deleted == true && mounted) {
+  await Future.delayed(const Duration(milliseconds: 400));
+  if (!mounted) return;
 
   try {
-    final detail = await fetchAnalysisSessionDetail(session.id!);
-    if (!mounted) return;
-    Navigator.pop(context); // ปิด Dialog Loading
+    await _refresh();
+  } catch (_) {
+    // เงียบไว้ก็พอ ถ้า refresh ไม่สำเร็จ list จะยังโชว์ข้อมูลเดิมค้างอยู่
+  }
 
-    // ดึง AnalysisResult ออกมา
-    final AnalysisResult analysisResult =
-        detail.result['analysis_obj'] is AnalysisResult
-            ? detail.result['analysis_obj'] as AnalysisResult
-            : AnalysisResult.fromJson(detail.result, detail.title);
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnalysisResultScreen(
-          //  ใช้ Stream.multi หรือ StreamController ปล่อย Event เพื่อป้องกัน StreamBuilder อ่านไม่ทัน
-          analysisStream: Stream<AnalysisEvent>.multi((controller) {
-            controller.add(ResultEvent(analysisResult));
-            controller.close();
-          }),
-          userId: 1,
-          referenceVideoId: detail.referenceVideoId,
-          videoUserUrl: detail.videoUserUrl,
-          isSavedSession: true,
-        ),
-      ),
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Result deleted.')),
     );
-  } on AnalysisException catch (error) {
-    if (!mounted) return;
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(error.message)));
-  } catch (e) {
-    if (!mounted) return;
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Error loading session: $e')));
   }
 }
+    } on AnalysisException catch (error) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading session: $e')));
+    }
+  }
 
   Future<bool> _confirmDelete(ScanHistoryItem item) async {
     final confirmed = await showDialog<bool>(
@@ -235,9 +258,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _allItems.removeWhere((e) => e.id == item.id);
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Scan deleted.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Scan deleted.')));
     } on AnalysisException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -245,9 +268,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete: $error')));
     }
   }
 
@@ -280,7 +303,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Your latest posture analysis sessions.',
-                        style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade500,
+                        ),
                       ),
                       const SizedBox(height: 20),
 
@@ -289,16 +315,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         controller: _searchController,
                         decoration: InputDecoration(
                           hintText: 'Search by title...',
-                          prefixIcon: const Icon(CupertinoIcons.search, size: 20),
+                          prefixIcon: const Icon(
+                            CupertinoIcons.search,
+                            size: 20,
+                          ),
                           suffixIcon: _searchQuery.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(CupertinoIcons.clear_circled_solid, size: 18),
+                                  icon: const Icon(
+                                    CupertinoIcons.clear_circled_solid,
+                                    size: 18,
+                                  ),
                                   onPressed: () => _searchController.clear(),
                                 )
                               : null,
                           filled: true,
                           fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 14),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 0,
+                            horizontal: 14,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -312,18 +347,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () => setState(() => _sortAscending = !_sortAscending),
+                              onPressed: () => setState(
+                                () => _sortAscending = !_sortAscending,
+                              ),
                               icon: Icon(
                                 _sortAscending
                                     ? CupertinoIcons.arrow_up
                                     : CupertinoIcons.arrow_down,
                                 size: 16,
                               ),
-                              label: Text(_sortAscending ? 'Oldest first' : 'Newest first'),
+                              label: Text(
+                                _sortAscending
+                                    ? 'Oldest first'
+                                    : 'Newest first',
+                              ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppTheme.textDark,
                                 side: BorderSide(color: Colors.grey.shade300),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -339,21 +382,38 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 if (value == 'clear') _clearDateFilter();
                               },
                               itemBuilder: (context) => [
-                                const PopupMenuItem(value: 'single', child: Text('Pick a date')),
-                                const PopupMenuItem(value: 'range', child: Text('Pick a date range')),
+                                const PopupMenuItem(
+                                  value: 'single',
+                                  child: Text('Pick a date'),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'range',
+                                  child: Text('Pick a date range'),
+                                ),
                                 if (_selectedDateRange != null)
-                                  const PopupMenuItem(value: 'clear', child: Text('Clear filter')),
+                                  const PopupMenuItem(
+                                    value: 'clear',
+                                    child: Text('Clear filter'),
+                                  ),
                               ],
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 12,
+                                ),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(CupertinoIcons.calendar, size: 16),
+                                    const Icon(
+                                      CupertinoIcons.calendar,
+                                      size: 16,
+                                    ),
                                     const SizedBox(width: 6),
                                     Flexible(
                                       child: Text(
@@ -417,34 +477,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   return SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final item = items[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Dismissible(
-                              key: ValueKey(item.id ?? item.hashCode),
-                              direction: DismissDirection.endToStart,
-                              confirmDismiss: (_) => _confirmDelete(item),
-                              onDismissed: (_) => _deleteSession(item),
-                              background: Container(
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.symmetric(horizontal: 20),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade400,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Icon(CupertinoIcons.delete, color: Colors.white),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final item = items[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Dismissible(
+                            key: ValueKey(item.id ?? item.hashCode),
+                            direction: DismissDirection.endToStart,
+                            confirmDismiss: (_) => _confirmDelete(item),
+                            onDismissed: (_) => _deleteSession(item),
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
                               ),
-                              child: GestureDetector(
-                                onTap: () => _openSession(item),
-                                child: _ScanHistoryCard(item: item),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade400,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(
+                                CupertinoIcons.delete,
+                                color: Colors.white,
                               ),
                             ),
-                          );
-                        },
-                        childCount: items.length,
-                      ),
+                            child: GestureDetector(
+                              onTap: () => _openSession(item),
+                              child: _ScanHistoryCard(item: item),
+                            ),
+                          ),
+                        );
+                      }, childCount: items.length),
                     ),
                   );
                 },

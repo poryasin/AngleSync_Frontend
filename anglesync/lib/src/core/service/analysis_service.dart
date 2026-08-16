@@ -218,73 +218,73 @@ class AnalysisResult {
   bool get isExerciseMismatch => status == 'exercise_mismatch';
   bool get isDetectionFailure => !canAnalyze && !isExerciseMismatch;
   bool get hasFeedbackError => feedback?.hasError ?? false;
-factory AnalysisResult.fromJson(
-  Map<String, dynamic> json,
-  String exerciseName,
-) {
-  final selectedFrameJson = json['selected_frame'];
-  final feedbackJson = json['feedback'];
+  factory AnalysisResult.fromJson(
+    Map<String, dynamic> json,
+    String exerciseName,
+  ) {
+    final selectedFrameJson = json['selected_frame'];
+    final feedbackJson = json['feedback'];
 
-  final graphData = json['graph_data'] is Map<String, dynamic>
-      ? json['graph_data'] as Map<String, dynamic>
-      : <String, dynamic>{};
+    final graphData = json['graph_data'] is Map<String, dynamic>
+        ? json['graph_data'] as Map<String, dynamic>
+        : <String, dynamic>{};
 
-  final rawRiskFrames = json['risk_frames'] is List
-      ? json['risk_frames'] as List
-      : const [];
-  final riskFrames = rawRiskFrames
-      .whereType<Map>()
-      .map((e) => RiskFrame.fromJson(Map<String, dynamic>.from(e)))
-      .toList();
+    final rawRiskFrames = json['risk_frames'] is List
+        ? json['risk_frames'] as List
+        : const [];
+    final riskFrames = rawRiskFrames
+        .whereType<Map>()
+        .map((e) => RiskFrame.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
 
-  final rawScores =
-      graphData['risk_scores'] ??
-      riskFrames.map((f) => f.riskPercentage).toList();
-  final riskScores = rawScores is List
-      ? rawScores.map((e) => (e as num).toDouble()).toList()
-      : <double>[];
+    final rawScores =
+        graphData['risk_scores'] ??
+        riskFrames.map((f) => f.riskPercentage).toList();
+    final riskScores = rawScores is List
+        ? rawScores.map((e) => (e as num).toDouble()).toList()
+        : <double>[];
 
-  final rawTimes =
-      graphData['frame_times'] ??
-      riskFrames.map((f) => f.frameNumber).toList();
-  final frameTimes = rawTimes is List
-      ? rawTimes.map((e) => (e as num).toDouble()).toList()
-      : <double>[];
+    final rawTimes =
+        graphData['frame_times'] ??
+        riskFrames.map((f) => f.frameNumber).toList();
+    final frameTimes = rawTimes is List
+        ? rawTimes.map((e) => (e as num).toDouble()).toList()
+        : <double>[];
 
-  final highestIndex =
-      (graphData['highest_risk_frame_index'] as num?)?.toInt() ??
-      _highestRiskIndex(riskScores);
-  final fallbackImageUrl =
-      riskFrames.isNotEmpty && highestIndex < riskFrames.length
-      ? riskFrames[highestIndex].skeletonOverlayUrl
-      : null;
+    final highestIndex =
+        (graphData['highest_risk_frame_index'] as num?)?.toInt() ??
+        _highestRiskIndex(riskScores);
+    final fallbackImageUrl =
+        riskFrames.isNotEmpty && highestIndex < riskFrames.length
+        ? riskFrames[highestIndex].skeletonOverlayUrl
+        : null;
 
-  return AnalysisResult(
-    score:
-        (json['score'] as num?)?.toDouble() ??
-        (json['accuracy_score'] as num?)?.toDouble() ??
-        0,
-    scoreScale:
-        (json['score_scale'] as num?)?.toInt() ??
-        (json.containsKey('accuracy_score') ? 100 : 10),
-    canAnalyze: json['can_analyze'] as bool? ?? true,
-    status: json['status'] as String? ?? 'completed',
-    riskLevel: json['risk_level'] as String? ?? '',
-    selectedFrame: selectedFrameJson is Map<String, dynamic>
-        ? SelectedFrame.fromJson(selectedFrameJson)
-        : null,
-    feedback: feedbackJson is Map<String, dynamic>
-        ? AnalysisFeedback.fromJson(feedbackJson)
-        : null,
-    exerciseName: exerciseName,
-    riskScores: riskScores,
-    frameTimes: frameTimes,
-    highestRiskFrameIndex: highestIndex,
-    highestRiskImageUrl:
-        graphData['highest_risk_image_url'] as String? ?? fallbackImageUrl,
-    riskFrames: riskFrames,
-  );
-}
+    return AnalysisResult(
+      score:
+          (json['score'] as num?)?.toDouble() ??
+          (json['accuracy_score'] as num?)?.toDouble() ??
+          0,
+      scoreScale:
+          (json['score_scale'] as num?)?.toInt() ??
+          (json.containsKey('accuracy_score') ? 100 : 10),
+      canAnalyze: json['can_analyze'] as bool? ?? true,
+      status: json['status'] as String? ?? 'completed',
+      riskLevel: json['risk_level'] as String? ?? '',
+      selectedFrame: selectedFrameJson is Map<String, dynamic>
+          ? SelectedFrame.fromJson(selectedFrameJson)
+          : null,
+      feedback: feedbackJson is Map<String, dynamic>
+          ? AnalysisFeedback.fromJson(feedbackJson)
+          : null,
+      exerciseName: exerciseName,
+      riskScores: riskScores,
+      frameTimes: frameTimes,
+      highestRiskFrameIndex: highestIndex,
+      highestRiskImageUrl:
+          graphData['highest_risk_image_url'] as String? ?? fallbackImageUrl,
+      riskFrames: riskFrames,
+    );
+  }
 
   static int _highestRiskIndex(List<double> riskScores) {
     if (riskScores.isEmpty) return 0;
@@ -446,17 +446,13 @@ Future<Map<String, dynamic>> saveAnalysisResult({
 }) async {
   final uri = Uri.parse('${BackendConfig.baseUrl}/save-analyze');
   try {
-    final riskFramesPayload = result.riskFrames.map((frame) {
-      return {
-        'frame_number': frame.frameNumber,
-        'risk_percentage': frame.riskPercentage,
-        'highest_risk_image_url':
-            frame.skeletonOverlayUrl ?? result.highestRiskImageUrl ?? '',
-        'joint_coordinates': frame.jointCoordinates
-            ?.map((j) => {'joint_name': j.jointName, 'x': j.x, 'y': j.y})
-            .toList(),
-      };
-    }).toList();
+    final riskFramesPayload = buildRiskFramesPayload(result);
+    final feedbackPayload = {
+      'form_summary': result.feedback?.formSummary ?? '',
+      'injury_risk': result.feedback?.injuryRisk ?? const <String>[],
+      'corrective_cues': result.feedback?.correctiveCues ?? const <String>[],
+      'practice_plan': result.feedback?.practicePlan ?? const <String>[],
+    };
 
     final response = await http.post(
       uri,
@@ -466,9 +462,10 @@ Future<Map<String, dynamic>> saveAnalysisResult({
         'user_id': userId,
         'reference_video_id': referenceVideoId,
         'video_user_url': videoUserUrl,
-        'score': result.score,
+        'accuracy_score': result.score,
         'risk_level': result.riskLevel,
         'risk_frames': riskFramesPayload,
+        'feedback': feedbackPayload,
       }),
     );
 
@@ -480,6 +477,53 @@ Future<Map<String, dynamic>> saveAnalysisResult({
   } catch (e) {
     throw AnalysisException('Network error while saving: $e');
   }
+}
+
+List<Map<String, dynamic>> buildRiskFramesPayload(AnalysisResult result) {
+  // ส่งทุกเฟรมที่มี ไม่ใช่แค่เฟรมที่ risk สูงสุด
+  if (result.riskFrames.isNotEmpty) {
+    return result.riskFrames.map((frame) {
+      return {
+        'frame_number': frame.frameNumber,
+        'risk_percentage': frame.riskPercentage,
+        'highest_risk_image_url': frame.skeletonOverlayUrl ?? '',
+        'joint_coordinates': frame.jointCoordinates
+            ?.map((j) => {'joint_name': j.jointName, 'x': j.x, 'y': j.y})
+            .toList(),
+      };
+    }).toList();
+  }
+
+  if (result.riskScores.isNotEmpty) {
+    return List.generate(result.riskScores.length, (i) {
+      final time = i < result.frameTimes.length ? result.frameTimes[i] : i.toDouble();
+      return {
+        'frame_number': time.toInt(),
+        'risk_percentage': result.riskScores[i],
+        // เก็บภาพ overlay ไว้เฉพาะเฟรมที่ risk สูงสุด เฟรมอื่นไม่ต้องส่งภาพ (ประหยัด payload)
+        'highest_risk_image_url':
+            i == result.highestRiskFrameIndex
+                ? (result.highestRiskImageUrl ?? result.selectedFrame?.image ?? '')
+                : '',
+        'joint_coordinates': <String, dynamic>{},
+      };
+    });
+  }
+
+  final selectedFrame = result.selectedFrame;
+  if (selectedFrame != null) {
+    return [
+      {
+        'frame_number': selectedFrame.frame,
+        'risk_percentage': selectedFrame.risk,
+        'highest_risk_image_url':
+            result.highestRiskImageUrl ?? selectedFrame.image,
+        'joint_coordinates': <String, dynamic>{},
+      },
+    ];
+  }
+
+  return [];
 }
 
 Future<List<ScanHistoryItem>> fetchAnalysisHistory() async {
@@ -504,13 +548,17 @@ Future<List<ScanHistoryItem>> fetchAnalysisHistory() async {
           listData = decoded['history'];
         } else {
           // หากไม่มี key ข้างต้น และอาจเป็น error message ที่ส่งมากับ status 200
-          throw AnalysisException(decoded['message'] ?? decoded['error'] ?? 'Invalid response format');
+          throw AnalysisException(
+            decoded['message'] ?? decoded['error'] ?? 'Invalid response format',
+          );
         }
       }
 
       return listData.map((item) => ScanHistoryItem.fromJson(item)).toList();
     } else {
-      throw AnalysisException('Failed to fetch history (${response.statusCode})');
+      throw AnalysisException(
+        'Failed to fetch history (${response.statusCode})',
+      );
     }
   } catch (e) {
     throw AnalysisException('Error loading history: $e');
@@ -524,26 +572,23 @@ Future<AnalysisSessionDetail> fetchAnalysisSessionDetail(int sessionId) async {
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
 
-final sessionDetail = AnalysisSessionDetail.fromJson(json);
-      
-      final analysisJson = json['analysis_result'] is Map
-    ? Map<String, dynamic>.from(json['analysis_result'] as Map)
-    : <String, dynamic>{};
+      final sessionDetail = AnalysisSessionDetail.fromJson(json);
 
-final analysisResult = AnalysisResult.fromJson(
-  analysisJson,
-  sessionDetail.title,
-);
+      final analysisJson = json['analysis_result'] is Map
+          ? Map<String, dynamic>.from(json['analysis_result'] as Map)
+          : <String, dynamic>{};
+
+      final analysisResult = AnalysisResult.fromJson(
+        analysisJson,
+        sessionDetail.title,
+      );
 
       return AnalysisSessionDetail(
         sessionId: sessionDetail.sessionId,
         title: sessionDetail.title,
         referenceVideoId: sessionDetail.referenceVideoId,
         videoUserUrl: sessionDetail.videoUserUrl,
-        result: {
-          ...json,
-          'analysis_obj': analysisResult, 
-        },
+        result: {...json, 'analysis_obj': analysisResult},
       );
     } else {
       throw AnalysisException('Failed to fetch session detail.');
@@ -556,10 +601,20 @@ final analysisResult = AnalysisResult.fromJson(
 Future<void> deleteAnalysisSession(int sessionId) async {
   final uri = Uri.parse('${BackendConfig.baseUrl}/history/$sessionId');
   try {
-    final response = await http.delete(uri);
+    final response = await http
+        .delete(uri)
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw AnalysisException('Failed to delete scan session.');
+      throw AnalysisException(
+        'Failed to delete scan session (${response.statusCode}).',
+      );
     }
+  } on TimeoutException {
+    throw const AnalysisException(
+      'Delete timed out. The server may still be processing — please check History and try again.',
+    );
+  } on AnalysisException {
+    rethrow;
   } catch (e) {
     throw AnalysisException('Error deleting scan: $e');
   }
@@ -586,8 +641,8 @@ class AnalysisSessionDetail {
       title: json['session_name'] as String? ?? json['title'] as String? ?? '',
       referenceVideoId: (json['reference_video_id'] as num?)?.toInt() ?? 0,
       videoUserUrl: json['video_user_url'] as String? ?? '',
-      result: json['result'] is Map<String, dynamic> 
-          ? json['result'] as Map<String, dynamic> 
+      result: json['result'] is Map<String, dynamic>
+          ? json['result'] as Map<String, dynamic>
           : {},
     );
   }

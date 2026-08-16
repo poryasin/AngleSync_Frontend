@@ -41,6 +41,52 @@ void main() {
       expect(result.isExerciseMismatch, isFalse);
       expect(result.isDetectionFailure, isTrue);
     });
+
+    test('builds only the highest risk frame from graph data', () {
+      final result = AnalysisResult.fromJson({
+        'score': 84.4,
+        'score_scale': 100,
+        'graph_data': {
+          'risk_scores': [12.5, 44.2, 31.8],
+          'frame_times': [0.1, 0.2, 0.3],
+          'highest_risk_frame_index': 1,
+          'highest_risk_image_url': 'https://example.com/high-risk.jpg',
+        },
+      }, 'Push up_men');
+
+      final payload = buildRiskFramesPayload(result);
+
+      expect(payload, hasLength(1));
+      expect(payload.first['frame_number'], 2);
+      expect(payload.first['risk_percentage'], 44.2);
+      expect(
+        payload.first['highest_risk_image_url'],
+        'https://example.com/high-risk.jpg',
+      );
+    });
+
+    test('builds a savable risk frame from selected frame fallback', () {
+      final result = AnalysisResult.fromJson({
+        'score': 84.4,
+        'score_scale': 100,
+        'selected_frame': {
+          'frame': 25,
+          'time': 0.83,
+          'risk': 72.1,
+          'image': 'https://example.com/selected.jpg',
+        },
+      }, 'Push up_men');
+
+      final payload = buildRiskFramesPayload(result);
+
+      expect(payload, hasLength(1));
+      expect(payload.first['frame_number'], 25);
+      expect(payload.first['risk_percentage'], 72.1);
+      expect(
+        payload.first['highest_risk_image_url'],
+        'https://example.com/selected.jpg',
+      );
+    });
   });
 
   test('uses session_id from a history response', () {
