@@ -16,7 +16,7 @@ class AngleSyncApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       initialRoute: AppRouter.home,
-      // initialRoute: AppRouter.adminDashboard,
+      //initialRoute: AppRouter.adminDashboard,
       onGenerateRoute: AppRouter.onGenerateRoute,
     );
   }

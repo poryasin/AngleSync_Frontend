@@ -480,7 +480,23 @@ Future<Map<String, dynamic>> saveAnalysisResult({
 }
 
 List<Map<String, dynamic>> buildRiskFramesPayload(AnalysisResult result) {
-  // ส่งทุกเฟรมที่มี ไม่ใช่แค่เฟรมที่ risk สูงสุด
+  // เลือกแหล่งข้อมูลที่มีจำนวนเฟรมเยอะกว่า แทนที่จะเช็คตามลำดับเดิม
+  if (result.riskScores.length > result.riskFrames.length &&
+      result.riskScores.isNotEmpty) {
+    return List.generate(result.riskScores.length, (i) {
+      final time =
+          i < result.frameTimes.length ? result.frameTimes[i] : i.toDouble();
+      return {
+        'frame_number': time.toInt(),
+        'risk_percentage': result.riskScores[i],
+        'highest_risk_image_url': i == result.highestRiskFrameIndex
+            ? (result.highestRiskImageUrl ?? result.selectedFrame?.image ?? '')
+            : '',
+        'joint_coordinates': <String, dynamic>{},
+      };
+    });
+  }
+
   if (result.riskFrames.isNotEmpty) {
     return result.riskFrames.map((frame) {
       return {
@@ -492,22 +508,6 @@ List<Map<String, dynamic>> buildRiskFramesPayload(AnalysisResult result) {
             .toList(),
       };
     }).toList();
-  }
-
-  if (result.riskScores.isNotEmpty) {
-    return List.generate(result.riskScores.length, (i) {
-      final time = i < result.frameTimes.length ? result.frameTimes[i] : i.toDouble();
-      return {
-        'frame_number': time.toInt(),
-        'risk_percentage': result.riskScores[i],
-        // เก็บภาพ overlay ไว้เฉพาะเฟรมที่ risk สูงสุด เฟรมอื่นไม่ต้องส่งภาพ (ประหยัด payload)
-        'highest_risk_image_url':
-            i == result.highestRiskFrameIndex
-                ? (result.highestRiskImageUrl ?? result.selectedFrame?.image ?? '')
-                : '',
-        'joint_coordinates': <String, dynamic>{},
-      };
-    });
   }
 
   final selectedFrame = result.selectedFrame;
