@@ -3,17 +3,23 @@ import 'package:anglesync/src/features/navigation/presentation/main_shell.dart';
 import 'package:anglesync/src/features/scan/presentation/scan_screen.dart';
 import 'package:anglesync/src/features/scan/domain/exercise_detail.dart';
 import 'package:anglesync/src/features/scan/presentation/upload_screen.dart';
-import 'package:anglesync/src/features/admin/presentation/admin_dashboard.dart'; 
+import 'package:anglesync/src/features/admin/presentation/admin_dashboard.dart';
+import 'package:anglesync/src/features/auth/presentation/auth_wrapper.dart';
+import 'package:anglesync/src/features/auth/presentation/login_screen.dart';
+import 'package:anglesync/src/features/auth/presentation/gender_selection_screen.dart';
 
 class AppRouter {
+  static const String root = '/';
   static const String home = '/';
+  static const String login = '/login';
+  static const String genderSelection = '/gender-selection';
   static const String scan = '/scan';
   static const String history = '/history';
   static const String upload = '/upload';
   static const String adminDashboard = '/admin-dashboard'; 
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    final page = buildPage(settings.name ?? '/', settings.arguments);
+    final page = buildPage(settings.name ?? root, settings.arguments);
 
     switch (settings.name) {
       case scan:
@@ -32,8 +38,14 @@ class AppRouter {
 
   static Widget buildPage(String routeName, Object? arguments) {
     switch (routeName) {
-      case home:
-        return const MainShell();
+      case root:
+        return const AuthWrapper(); // 👈 ให้หน้าแรกผ่าน AuthWrapper ก่อนเสมอ
+
+      case login:
+        return const LoginScreen();
+
+      case genderSelection:
+        return const GenderSelectionScreen();
 
       case scan:
         return const ScanScreen();
@@ -46,11 +58,11 @@ class AppRouter {
           exercise: arguments as ExerciseDetail,
         );
 
-      case adminDashboard: // เพิ่ม
+      case adminDashboard:
         return const AdminDashboardPage();
 
       default:
-        return const MainShell();
+        return const AuthWrapper();
     }
   }
 }
