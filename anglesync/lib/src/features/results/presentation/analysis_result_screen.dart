@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/service/analysis_service.dart';
+import '../../../core/service/auth_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/risk_graph.dart';
 import '../widgets/save_session_dialog.dart';
@@ -31,7 +32,6 @@ class AnalysisResultScreen extends StatefulWidget {
 }
 
 class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
-  // true ระหว่างกำลังลบ session -> โชว์ overlay ทับหน้าจอเดิม แทนการ push dialog แยก route
   bool _isDeleting = false;
 
   @override
@@ -44,18 +44,12 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
             StreamBuilder<AnalysisEvent>(
               stream: widget.analysisStream,
               builder: (context, snapshot) {
-                //
-                // LOADING
-                //
                 if (!snapshot.hasData) {
                   return _buildProgress(context, 'Uploading video...', 10);
                 }
 
                 final event = snapshot.data!;
 
-                //
-                // STEP / PROGRESS
-                //
                 if (event is StepEvent) {
                   return _buildProgress(
                     context,
@@ -72,9 +66,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                   );
                 }
 
-                //
-                // ERROR
-                //
                 if (event is ErrorEvent) {
                   if (_isDetectionFailureMessage(event.message)) {
                     return _buildDetectionFailure(context);
@@ -83,9 +74,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                   return _buildError(context, event.message);
                 }
 
-                //
-                // RESULT
-                //
                 if (event is ResultEvent) {
                   if (event.result.isExerciseMismatch) {
                     return _buildExerciseMismatch(context, event.result);
@@ -109,7 +97,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
               },
             ),
 
-            // Overlay ตอนกำลังลบ (แทนการ push dialog แยก route)
             if (_isDeleting)
               Positioned.fill(
                 child: Container(
@@ -142,16 +129,11 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
     );
   }
 
-  //
-  // PROGRESS
-  //
   Widget _buildProgress(BuildContext context, String message, int percent) {
     return Column(
       children: [
         _appBar(context),
-
         const Divider(height: 1),
-
         Expanded(
           child: Center(
             child: Column(
@@ -166,9 +148,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                     color: AppTheme.green,
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
                 Text(
                   '$percent%',
                   style: const TextStyle(
@@ -177,9 +157,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                     letterSpacing: -1,
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 Text(
                   message,
                   style: TextStyle(
@@ -195,18 +173,11 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
     );
   }
 
-  //
-  // RESULT
-  //
   Widget _buildResult(BuildContext context, AnalysisResult result) {
     return Column(
       children: [
-        // APP BAR
         _appBar(context),
-
         const Divider(height: 1, thickness: 1),
-
-        // BODY
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
@@ -214,7 +185,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildScoreCard(result),
-
                 const SizedBox(height: 20),
                 if (result.riskScores.isNotEmpty)
                   RiskGraph(
@@ -223,10 +193,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                     highestRiskFrameIndex: result.highestRiskFrameIndex,
                     highestRiskImageUrl: result.highestRiskImageUrl,
                   ),
-
                 if (result.riskScores.isNotEmpty) const SizedBox(height: 20),
-
-                // Form Summary
                 _buildFeedbackCard(
                   title: 'Form Summary',
                   items: const [],
@@ -241,8 +208,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                // Injury Risk
                 _buildFeedbackCard(
                   title: 'Injury Risk',
                   items: result.feedback?.injuryRisk ?? [],
@@ -252,25 +217,19 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                   useBullet: true,
                 ),
                 const SizedBox(height: 12),
-
-                // Corrective Cues
                 _buildFeedbackCard(
                   title: 'Corrective Cues',
                   items: result.feedback?.correctiveCues ?? [],
                   icon: Icons.track_changes_outlined,
                 ),
                 const SizedBox(height: 12),
-
-                // Practice Plan
                 _buildFeedbackCard(
                   title: 'Practice Plan',
                   items: result.feedback?.practicePlan ?? [],
                   icon: Icons.calendar_today_outlined,
                 ),
                 const SizedBox(height: 24),
-
                 _buildResultActionButton(context, result),
-
                 const SizedBox(height: 32),
               ],
             ),
@@ -316,7 +275,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
           final sessionName = await SaveSessionDialog.show(context);
           if (sessionName == null || !context.mounted) return;
 
-          // แสดง loading ระหว่างรอ
           showDialog(
             context: context,
             barrierDismissible: false,
@@ -324,10 +282,14 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
           );
 
           try {
+            // ดึง ID ผู้ใช้ที่ล็อกอินอยู่ปัจจุบันตรงนี้
+            final authService = AuthService();
+            final currentUserId = await authService.getCurrentUserId() ?? widget.userId;
+
             await saveAnalysisResult(
               sessionName: sessionName,
               result: result,
-              userId: widget.userId,
+              userId: currentUserId,
               referenceVideoId: widget.referenceVideoId,
               videoUserUrl: widget.videoUserUrl,
             );
@@ -353,7 +315,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
             }
           } on AnalysisException catch (e) {
             if (!context.mounted) return;
-            Navigator.pop(context); // ปิด loading dialog
+            Navigator.pop(context);
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(SnackBar(content: Text(e.message)));
@@ -411,15 +373,12 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
 
     if (confirmed != true || !mounted) return;
 
-    // เปิด overlay ในหน้าเดิม แทนการ push dialog เป็น route ใหม่
     setState(() => _isDeleting = true);
 
     try {
       await deleteAnalysisSession(id);
       if (!mounted) return;
 
-      // ปิด overlay ก่อน แล้วรอ 1 เฟรมให้หน้าจอ render กลับมาปกติ
-      // ก่อนค่อย pop กันปัญหา compositor เจอ overlay ซ้อนกับ transition
       setState(() => _isDeleting = false);
       await Future.delayed(const Duration(milliseconds: 50));
       if (!mounted) return;
@@ -440,9 +399,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
     }
   }
 
-  //
-  // SCORE CARD
-  //
   Widget _buildScoreCard(AnalysisResult result) {
     final scale = result.scoreScale <= 0 ? 100 : result.scoreScale;
     final score = result.score.clamp(0, scale).toDouble();
@@ -465,9 +421,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          //
-          // TOP ROW
-          //
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -478,9 +431,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                     color: Colors.green,
                     size: 20,
                   ),
-
                   SizedBox(width: 8),
-
                   Text(
                     "POSTURE SCORE",
                     style: TextStyle(
@@ -492,7 +443,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                   ),
                 ],
               ),
-
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -514,12 +464,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
-          //
-          // SCORE
-          //
           RichText(
             text: TextSpan(
               children: [
@@ -533,7 +478,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                     letterSpacing: -2,
                   ),
                 ),
-
                 TextSpan(
                   text: "/$scale",
                   style: const TextStyle(
@@ -545,12 +489,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 24),
-
-          //
-          // PROGRESS BAR
-          //
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: LinearProgressIndicator(
@@ -565,9 +504,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
     );
   }
 
-  //
-  // FEEDBACK CARD
-  //
   Widget _buildFeedbackCard({
     required String title,
     required List<String> items,
@@ -594,7 +530,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
@@ -624,8 +559,6 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
           const SizedBox(height: 14),
           const Divider(color: Color(0xFFF5F5F5), height: 1),
           const SizedBox(height: 14),
-
-          // Content
           if (customContent != null)
             customContent
           else if (items.isEmpty)
@@ -770,8 +703,8 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                       height: 52,
                       child: ElevatedButton(
                         onPressed: () {
-                          widget.onMismatch?.call(); // clear video in UploadScreen
-                          Navigator.pop(context); // back to UploadScreen
+                          widget.onMismatch?.call();
+                          Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.green,
@@ -800,16 +733,11 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
     );
   }
 
-  //
-  // ERROR
-  //
   Widget _buildError(BuildContext context, String error) {
     return Column(
       children: [
         _appBar(context),
-
         const Divider(height: 1),
-
         Expanded(
           child: Center(
             child: Padding(
@@ -841,9 +769,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                 size: 20,
                 color: CupertinoColors.activeBlue,
               ),
-
               SizedBox(width: 4),
-
               Text(
                 'Upload',
                 style: TextStyle(

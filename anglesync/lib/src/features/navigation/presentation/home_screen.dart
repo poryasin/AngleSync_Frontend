@@ -3,45 +3,104 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/service/auth_service.dart';
+import '../../../core/service/analysis_service.dart';
+import '../../history/domain/scan_history_item.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final VoidCallback? onViewAllHistory;
   const HomeScreen({super.key, this.onViewAllHistory});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _isLoading = true;
+  List<ScanHistoryItem> _recentScans = [];
+  Set<int> _scannedDaysThisMonth = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      final history = await fetchAnalysisHistory();
+      final now = DateTime.now();
+
+      // 1. ดึง 3 รายการล่าสุด
+      final recent = history.take(3).toList();
+
+      // 2. หาวันที่มีการทำสแกนใน "เดือนปัจจุบัน"
+      final daysInMonth = <int>{};
+      for (var item in history) {
+        if (item.createdAt.year == now.year && item.createdAt.month == now.month) {
+          daysInMonth.add(item.createdAt.day);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _recentScans = recent;
+          _scannedDaysThisMonth = daysInMonth;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const _AppBar(),
-              const _HeroSection(),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: _ScanCalendarCard(),
-              ),
-              const SizedBox(height: 20),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: _ScanPostureButton(),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  'Pick an exercise category to begin',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+        child: RefreshIndicator(
+          onRefresh: _loadDashboardData,
+          color: AppTheme.green,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const _AppBar(),
+                const _HeroSection(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _ScanCalendarCard(
+                    scannedDays: _scannedDaysThisMonth,
+                    isLoading: _isLoading,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: _RecentScansSection(onViewAllHistory: onViewAllHistory),
-              ),
-              const SizedBox(height: 32),
-            ],
+                const SizedBox(height: 20),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: _ScanPostureButton(),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    'Pick an exercise category to begin',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _RecentScansSection(
+                    recentScans: _recentScans,
+                    isLoading: _isLoading,
+                    onViewAllHistory: widget.onViewAllHistory,
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),
@@ -49,7 +108,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// App Bar
 // App Bar
 class _AppBar extends StatelessWidget {
   const _AppBar();
@@ -230,17 +288,21 @@ class _HeroSection extends StatelessWidget {
 
 // Scan Calendar Card
 class _ScanCalendarCard extends StatelessWidget {
-  const _ScanCalendarCard();
+  final Set<int> scannedDays;
+  final bool isLoading;
 
-  // mock data of days user scanned in current month (1-based day numbers)
-  static const Set<int> _scannedDays = {1, 2, 4, 5, 8, 9, 11, 12, 13};
-
-  static const int _firstWeekdayOffset = 3; // May 2025 starts on Thursday
-  static const int _totalDays = 31;
-  static const int _today = 14;
+  const _ScanCalendarCard({
+    required this.scannedDays,
+    required this.isLoading,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final totalDaysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final firstWeekdayOfMonth = DateTime(now.year, now.month, 1).weekday; // 1 = Mon, 7 = Sun
+    final firstWeekdayOffset = firstWeekdayOfMonth - 1;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -289,7 +351,7 @@ class _ScanCalendarCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${_scannedDays.length} days',
+                  '${scannedDays.length} days',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -317,7 +379,14 @@ class _ScanCalendarCard extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Calendar grid
-          _buildCalendarGrid(),
+          isLoading
+              ? const SizedBox(
+                  height: 150,
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppTheme.green),
+                  ),
+                )
+              : _buildCalendarGrid(firstWeekdayOffset, totalDaysInMonth, now.day),
 
           const SizedBox(height: 16),
 
@@ -358,11 +427,10 @@ class _ScanCalendarCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCalendarGrid() {
-    // list of day numbers with null for empty cells before the first day
+  Widget _buildCalendarGrid(int offset, int totalDays, int today) {
     final List<int?> days = [
-      ...List.filled(_firstWeekdayOffset, null),
-      ...List.generate(_totalDays, (i) => i + 1),
+      ...List.filled(offset, null),
+      ...List.generate(totalDays, (i) => i + 1),
     ];
 
     while (days.length % 7 != 0) {
@@ -381,8 +449,8 @@ class _ScanCalendarCard extends StatelessWidget {
               final day = days[rowIndex * 7 + colIndex];
               return _DayCell(
                 day: day,
-                isScanned: day != null && _scannedDays.contains(day),
-                isToday: day == _today,
+                isScanned: day != null && scannedDays.contains(day),
+                isToday: day == today,
               );
             }),
           ),
@@ -512,29 +580,15 @@ class _ScanPostureButton extends StatelessWidget {
 
 // Recent Scans Section
 class _RecentScansSection extends StatelessWidget {
+  final List<ScanHistoryItem> recentScans;
+  final bool isLoading;
   final VoidCallback? onViewAllHistory;
-  const _RecentScansSection({this.onViewAllHistory});
 
-  static const List<Map<String, dynamic>> _recentScans = [
-    {
-      'title': 'Morning squat check',
-      'exercise': 'Squat',
-      'time': 'Today',
-      'score': 88,
-    },
-    {
-      'title': 'Push-up form review',
-      'exercise': 'Push-up',
-      'time': 'Yesterday',
-      'score': 75,
-    },
-    {
-      'title': 'Plank hold test',
-      'exercise': 'Plank',
-      'time': '2 days ago',
-      'score': 92,
-    },
-  ];
+  const _RecentScansSection({
+    required this.recentScans,
+    required this.isLoading,
+    this.onViewAllHistory,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -591,43 +645,70 @@ class _RecentScansSection extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Scan items
-        ..._recentScans.map(
-          (scan) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _RecentScanItem(
-              title: scan['title'] as String,
-              exercise: scan['exercise'] as String,
-              time: scan['time'] as String,
-              score: scan['score'] as int,
+        if (isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: CircularProgressIndicator(color: AppTheme.green),
+            ),
+          )
+        else if (recentScans.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Center(
+              child: Text(
+                'No recent scans yet',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+              ),
+            ),
+          )
+        else
+          ...recentScans.map(
+            (scan) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _RecentScanItem(item: scan),
             ),
           ),
-        ),
       ],
     );
   }
 }
 
 class _RecentScanItem extends StatelessWidget {
-  final String title;
-  final String exercise;
-  final String time;
-  final int score;
+  final ScanHistoryItem item;
 
-  const _RecentScanItem({
-    required this.title,
-    required this.exercise,
-    required this.time,
-    required this.score,
-  });
+  const _RecentScanItem({required this.item});
+
+  int get _scoreValue => item.score?.toInt() ?? 0;
 
   Color get _scoreColor {
-    if (score >= 85) return AppTheme.green;
-    if (score >= 70) return Colors.blue.shade300;
+    if (_scoreValue >= 85) return AppTheme.green;
+    if (_scoreValue >= 70) return Colors.blue.shade300;
     return Colors.orange;
+  }
+
+  // คำนวณช่วงเวลา เช่น Today, Yesterday, 2 days ago
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final itemDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    final difference = today.difference(itemDate).inDays;
+
+    if (difference == 0) return 'Today';
+    if (difference == 1) return 'Yesterday';
+    if (difference < 30) return '$difference days ago';
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final timeStr = _formatTimeAgo(item.createdAt);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -653,7 +734,7 @@ class _RecentScanItem extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                '$score',
+                '$_scoreValue',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -670,7 +751,7 @@ class _RecentScanItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  item.title,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -687,7 +768,7 @@ class _RecentScanItem extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '$exercise · $time',
+                      timeStr,
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey.shade500,

@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:anglesync/src/core/config/backend_config.dart';
 import 'package:anglesync/src/features/history/domain/scan_history_item.dart';
+import 'package:anglesync/src/core/service/auth_service.dart';
+
+final AuthService _authService = AuthService();
 
 // MODELS
 class AnalysisStep {
@@ -218,6 +221,7 @@ class AnalysisResult {
   bool get isExerciseMismatch => status == 'exercise_mismatch';
   bool get isDetectionFailure => !canAnalyze && !isExerciseMismatch;
   bool get hasFeedbackError => feedback?.hasError ?? false;
+
   factory AnalysisResult.fromJson(
     Map<String, dynamic> json,
     String exerciseName,
@@ -333,9 +337,15 @@ class AnalysisService {
   }) async* {
     final uri = Uri.parse('${BackendConfig.baseUrl}/analyze/stream');
 
+    final token = await _authService.getToken();
+
     final request = http.MultipartRequest('POST', uri)
       ..files.add(await http.MultipartFile.fromPath('file', videoFile.path))
       ..fields['reference_video_id'] = referenceVideoId.toString();
+
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
 
     http.StreamedResponse response;
 
@@ -445,6 +455,11 @@ Future<Map<String, dynamic>> saveAnalysisResult({
   required String videoUserUrl,
 }) async {
   final uri = Uri.parse('${BackendConfig.baseUrl}/save-analyze');
+  final token = await _authService.getToken();
+
+  // ดึง ID ของผู้ใช้ปัจจุบันที่ล็อกอินอยู่ผ่าน AuthService
+  final currentUserId = await _authService.getCurrentUserId() ?? userId;
+
   try {
     final riskFramesPayload = buildRiskFramesPayload(result);
     final feedbackPayload = {
@@ -454,12 +469,19 @@ Future<Map<String, dynamic>> saveAnalysisResult({
       'practice_plan': result.feedback?.practicePlan ?? const <String>[],
     };
 
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
     final response = await http.post(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: headers,
       body: jsonEncode({
         'session_name': sessionName,
-        'user_id': userId,
+        'user_id': currentUserId,
         'reference_video_id': referenceVideoId,
         'video_user_url': videoUserUrl,
         'accuracy_score': result.score,
@@ -480,7 +502,6 @@ Future<Map<String, dynamic>> saveAnalysisResult({
 }
 
 List<Map<String, dynamic>> buildRiskFramesPayload(AnalysisResult result) {
-  // เลือกแหล่งข้อมูลที่มีจำนวนเฟรมเยอะกว่า แทนที่จะเช็คตามลำดับเดิม
   if (result.riskScores.length > result.riskFrames.length &&
       result.riskScores.isNotEmpty) {
     return List.generate(result.riskScores.length, (i) {
@@ -528,18 +549,25 @@ List<Map<String, dynamic>> buildRiskFramesPayload(AnalysisResult result) {
 
 Future<List<ScanHistoryItem>> fetchAnalysisHistory() async {
   final uri = Uri.parse('${BackendConfig.baseUrl}/history');
+  final token = await _authService.getToken();
+
   try {
-    final response = await http.get(uri);
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    final response = await http.get(uri, headers: headers);
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
 
       List<dynamic> listData = [];
 
-      // เช็คว่า response ส่งมาเป็น List ตรงๆ หรือห่ออยู่ใน Map
       if (decoded is List) {
         listData = decoded;
       } else if (decoded is Map<String, dynamic>) {
-        // ลองดึง key ที่ Backend มักใช้ห่อข้อมูล
         if (decoded['data'] is List) {
           listData = decoded['data'];
         } else if (decoded['sessions'] is List) {
@@ -547,7 +575,6 @@ Future<List<ScanHistoryItem>> fetchAnalysisHistory() async {
         } else if (decoded['history'] is List) {
           listData = decoded['history'];
         } else {
-          // หากไม่มี key ข้างต้น และอาจเป็น error message ที่ส่งมากับ status 200
           throw AnalysisException(
             decoded['message'] ?? decoded['error'] ?? 'Invalid response format',
           );
@@ -567,8 +594,17 @@ Future<List<ScanHistoryItem>> fetchAnalysisHistory() async {
 
 Future<AnalysisSessionDetail> fetchAnalysisSessionDetail(int sessionId) async {
   final uri = Uri.parse('${BackendConfig.baseUrl}/history/$sessionId');
+  final token = await _authService.getToken();
+
   try {
-    final response = await http.get(uri);
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    final response = await http.get(uri, headers: headers);
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -585,6 +621,7 @@ Future<AnalysisSessionDetail> fetchAnalysisSessionDetail(int sessionId) async {
 
       return AnalysisSessionDetail(
         sessionId: sessionDetail.sessionId,
+        userId: sessionDetail.userId,
         title: sessionDetail.title,
         referenceVideoId: sessionDetail.referenceVideoId,
         videoUserUrl: sessionDetail.videoUserUrl,
@@ -600,9 +637,18 @@ Future<AnalysisSessionDetail> fetchAnalysisSessionDetail(int sessionId) async {
 
 Future<void> deleteAnalysisSession(int sessionId) async {
   final uri = Uri.parse('${BackendConfig.baseUrl}/history/$sessionId');
+  final token = await _authService.getToken();
+
   try {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
     final response = await http
-        .delete(uri)
+        .delete(uri, headers: headers)
         .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw AnalysisException(
@@ -622,6 +668,7 @@ Future<void> deleteAnalysisSession(int sessionId) async {
 
 class AnalysisSessionDetail {
   final int sessionId;
+  final int userId;
   final String title;
   final int referenceVideoId;
   final String videoUserUrl;
@@ -629,6 +676,7 @@ class AnalysisSessionDetail {
 
   const AnalysisSessionDetail({
     required this.sessionId,
+    required this.userId,
     required this.title,
     required this.referenceVideoId,
     required this.videoUserUrl,
@@ -638,6 +686,7 @@ class AnalysisSessionDetail {
   factory AnalysisSessionDetail.fromJson(Map<String, dynamic> json) {
     return AnalysisSessionDetail(
       sessionId: (json['session_id'] as num?)?.toInt() ?? 0,
+      userId: (json['user_id'] as num?)?.toInt() ?? 0,
       title: json['session_name'] as String? ?? json['title'] as String? ?? '',
       referenceVideoId: (json['reference_video_id'] as num?)?.toInt() ?? 0,
       videoUserUrl: json['video_user_url'] as String? ?? '',

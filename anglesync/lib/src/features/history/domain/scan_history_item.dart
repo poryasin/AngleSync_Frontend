@@ -3,12 +3,14 @@ class ScanHistoryItem {
   final String title;
   final DateTime? analysisDate;
   final double? score;
+  final DateTime createdAt;
 
   const ScanHistoryItem({
     this.id,
     required this.title,
     this.analysisDate,
     this.score,
+    required this.createdAt,
   });
 
   factory ScanHistoryItem.fromJson(Map<String, dynamic> json) {
@@ -36,6 +38,7 @@ class ScanHistoryItem {
       title: (json['session_name'] ?? json['title'] ?? 'Untitled session').toString(),
       analysisDate: parsedDate,
       score: parsedScore,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 

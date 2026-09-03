@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/service/exercise_service.dart';
+import '../../../core/service/auth_service.dart'; // ⬅️ นำเข้า AuthService
 
 import '../domain/exercise_item.dart';
 import '../domain/exercise_detail.dart';
@@ -18,10 +19,13 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final AuthService _authService = AuthService(); // ⬅️ สร้าง instance AuthService
 
   List<ExerciseItem> _allExercises = [];
+  List<ExerciseItem> _genderFilteredExercises = []; // ⬅️ ลิสต์ที่กรองเฉพาะเพศ user
   List<ExerciseItem> _filtered = [];
 
+  String? _userGender;
   bool _isLoading = true;
 
   @override
@@ -32,11 +36,24 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future<void> _loadExercises() async {
     try {
+      // 1. ดึง gender ของสมาชิก
+      _userGender = await _authService.getGender();
+
+      // 2. ดึง exercises ทั้งหมดจาก backend
       final exercises = await ExerciseService.fetchExercises();
+
+      // 3. กรองตามเพศ (ถ้าไม่มีค่า gender ให้แสดงทั้งหมดไว้ก่อน)
+      if (_userGender != null && _userGender!.isNotEmpty) {
+        _genderFilteredExercises = exercises.where((item) {
+          return item.gender.toLowerCase() == _userGender!.toLowerCase();
+        }).toList();
+      } else {
+        _genderFilteredExercises = exercises;
+      }
 
       setState(() {
         _allExercises = exercises;
-        _filtered = exercises;
+        _filtered = _genderFilteredExercises;
         _isLoading = false;
       });
     } catch (e) {
@@ -50,7 +67,8 @@ class _ScanScreenState extends State<ScanScreen> {
 
   void _onSearch(String query) {
     setState(() {
-      _filtered = _allExercises.where((e) {
+      // ⬅️ กรองคำค้นหาซ้อนบนลิสต์ที่ผ่านการกรองเพศเรียบร้อยแล้ว
+      _filtered = _genderFilteredExercises.where((e) {
         return e.title.toLowerCase().contains(query.toLowerCase()) ||
             e.category.toLowerCase().contains(query.toLowerCase());
       }).toList();

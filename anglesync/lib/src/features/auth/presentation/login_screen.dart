@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '/src/core/service/auth_service.dart';
 import '/src/core/theme/app_theme.dart';
 import 'gender_selection_screen.dart';
+import '/src/features/auth/auth_navigation.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,40 +16,26 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSigningIn = false;
 
   Future<void> _handleGoogleSignIn() async {
-    setState(() => _isSigningIn = true);
+  setState(() => _isSigningIn = true);
 
-    try {
-      final result = await _authService.signInWithGoogle();
-      if (!mounted) return;
-
-      if (result.needsGender) {
-        // ผู้ใช้ใหม่ ยังไม่ได้เลือกเพศ -> ไปหน้าเลือกเพศก่อน
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const GenderSelectionScreen()),
-        );
-      } else {
-        // ผู้ใช้เก่า มีข้อมูลครบแล้ว -> เข้าหน้า Home เลย
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/home',
-          (route) => false,
-        );
-      }
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign-in failed: $error')),
-      );
-    } finally {
-      if (mounted) setState(() => _isSigningIn = false);
-    }
+  try {
+    final result = await _authService.signInWithGoogle();
+    if (!mounted) return;
+    navigateAfterAuth(context, result);   // ⬅️ เปลี่ยนมาเรียกตัวนี้แทน if/else เดิม
+  } on AuthException catch (error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.message)),
+    );
+  } catch (error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Sign-in failed: $error')),
+    );
+  } finally {
+    if (mounted) setState(() => _isSigningIn = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {

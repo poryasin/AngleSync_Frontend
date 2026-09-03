@@ -183,7 +183,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         controller.add(ResultEvent(analysisResult));
         controller.close();
       }),
-      userId: 1,
+      userId: detail.userId,
       referenceVideoId: detail.referenceVideoId,
       videoUserUrl: detail.videoUserUrl,
       isSavedSession: true,
