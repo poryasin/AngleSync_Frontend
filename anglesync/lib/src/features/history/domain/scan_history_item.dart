@@ -30,7 +30,7 @@ class ScanHistoryItem {
 
     // Safe DateTime parsing
     final parsedDate = rawDate != null
-        ? DateTime.tryParse(rawDate.toString())
+        ? DateTime.tryParse(rawDate.toString())?.toLocal()
         : null;
 
     return ScanHistoryItem(
@@ -38,7 +38,7 @@ class ScanHistoryItem {
       title: (json['session_name'] ?? json['title'] ?? 'Untitled session').toString(),
       analysisDate: parsedDate,
       score: parsedScore,
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      createdAt: parsedDate ?? DateTime.now(),
     );
   }
 

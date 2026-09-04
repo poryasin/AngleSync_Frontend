@@ -684,7 +684,7 @@ class _RecentScanItem extends StatelessWidget {
 
   const _RecentScanItem({required this.item});
 
-  int get _scoreValue => item.score?.toInt() ?? 0;
+  int get _scoreValue => item.score?.round() ?? 0;
 
   Color get _scoreColor {
     if (_scoreValue >= 85) return AppTheme.green;
