@@ -55,7 +55,17 @@ class AuthService {
       body: jsonEncode({'id_token': idToken}),
     );
 
+    // SRS-075 & Error Handling: อ่าน detail จาก Backend เมื่อเจอ 403 หรือ Status อื่นที่ไม่ใช่ 200
     if (response.statusCode != 200) {
+      try {
+        final errorData = jsonDecode(response.body) as Map<String, dynamic>;
+        final errorMessage = errorData['detail'] as String?;
+        if (errorMessage != null && errorMessage.isNotEmpty) {
+          throw AuthException(errorMessage);
+        }
+      } catch (e) {
+        if (e is AuthException) rethrow;
+      }
       throw AuthException('Login failed (${response.statusCode}).');
     }
 
@@ -66,7 +76,7 @@ class AuthService {
     final gender = data['gender'] as String?;
 
     await _storage.write(key: 'access_token', value: accessToken);
-    await _storage.write(key: 'user_id', value: userId.toString()); // 👈 บันทึก user_id
+    await _storage.write(key: 'user_id', value: userId.toString());
     await _storage.write(key: 'user_role', value: userRole);
     if (gender != null) {
       await _storage.write(key: 'gender', value: gender);
@@ -93,6 +103,21 @@ class AuthService {
         headers: {'Authorization': 'Bearer $token'},
       );
 
+      // หากโดนแบนระหว่างใช้งาน (Status 403) ให้ล้าง Token และส่ง Exception แจ้งเตือน
+      if (response.statusCode == 403) {
+        await signOut();
+        try {
+          final errorData = jsonDecode(response.body) as Map<String, dynamic>;
+          final errorMessage = errorData['detail'] as String?;
+          if (errorMessage != null && errorMessage.isNotEmpty) {
+            throw AuthException(errorMessage);
+          }
+        } catch (e) {
+          if (e is AuthException) rethrow;
+        }
+        throw AuthException("Your account has been suspended. Please contact support for assistance.");
+      }
+
       if (response.statusCode != 200) {
         await signOut();
         return null;
@@ -103,7 +128,7 @@ class AuthService {
       final userRole = data['user_role'] as String;
       final gender = data['gender'] as String?;
 
-      await _storage.write(key: 'user_id', value: userId.toString()); // 👈 บันทึก user_id
+      await _storage.write(key: 'user_id', value: userId.toString());
       await _storage.write(key: 'user_role', value: userRole);
       if (gender != null) {
         await _storage.write(key: 'gender', value: gender);
@@ -118,7 +143,8 @@ class AuthService {
         gender: gender,
         needsGender: data['needs_gender'] as bool,
       );
-    } catch (_) {
+    } catch (e) {
+      if (e is AuthException) rethrow;
       return null;
     }
   }
@@ -138,6 +164,15 @@ class AuthService {
     );
 
     if (response.statusCode != 200) {
+      try {
+        final errorData = jsonDecode(response.body) as Map<String, dynamic>;
+        final errorMessage = errorData['detail'] as String?;
+        if (errorMessage != null && errorMessage.isNotEmpty) {
+          throw AuthException(errorMessage);
+        }
+      } catch (e) {
+        if (e is AuthException) rethrow;
+      }
       throw AuthException('Failed to save gender.');
     }
 
@@ -157,10 +192,13 @@ class AuthService {
 
   Future<String?> getGender() => _storage.read(key: 'gender');
 
+  /// Alias method สำหรับรองรับ InactivityService
+  Future<void> logout() => signOut();
+
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _storage.delete(key: 'access_token');
-    await _storage.delete(key: 'user_id'); // 👈 ลบ user_id เมื่อ sign out
+    await _storage.delete(key: 'user_id');
     await _storage.delete(key: 'user_role');
     await _storage.delete(key: 'gender');
   }

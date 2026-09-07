@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'src/core/theme/app_theme.dart';
 import 'src/core/router/app_router.dart';
+import 'package:anglesync/src/core/service/auth_service.dart';
+import 'package:anglesync/src/core/service/inactive_service.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   runApp(const AngleSyncApp());
@@ -11,12 +15,23 @@ class AngleSyncApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AngleSync',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      initialRoute: AppRouter.splash,   
-      onGenerateRoute: AppRouter.onGenerateRoute,
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) {
+
+        final currentContext = navigatorKey.currentContext;
+        if (currentContext != null) {
+          InactivityService.resetTimer(currentContext);
+        }
+      },
+      child: MaterialApp(
+        navigatorKey: navigatorKey, 
+        title: 'AngleSync',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.theme,
+        initialRoute: AppRouter.splash,   
+        onGenerateRoute: AppRouter.onGenerateRoute,
+      ),
     );
   }
 }

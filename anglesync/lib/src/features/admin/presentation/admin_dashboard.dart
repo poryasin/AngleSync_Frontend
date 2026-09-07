@@ -6,11 +6,34 @@ import '../widgets/status_user.dart';
 import '/src/core/router/app_router.dart';
 import '/src/core/service/auth_service.dart';
 
-// TODO: replace with the real logged-in admin's user_id once login is built.
-const int currentAdminUserId = 1;
-
-class AdminDashboardPage extends StatelessWidget {
+class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
+
+  @override
+  State<AdminDashboardPage> createState() => _AdminDashboardPageState();
+}
+
+class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  final AuthService _authService = AuthService();
+  int? _currentAdminUserId;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAdminUserId();
+  }
+
+  Future<void> _loadAdminUserId() async {
+    // ดึง user_id ของผู้ใช้ที่กำลังล็อกอินอยู่จริงจาก AuthService / Token
+    final userId = await _authService.getCurrentUserId(); 
+    if (mounted) {
+      setState(() {
+        _currentAdminUserId = userId;
+        _isLoading = false;
+      });
+    }
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -36,7 +59,7 @@ class AdminDashboardPage extends StatelessWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    await AuthService().signOut();
+    await _authService.signOut();
 
     if (!context.mounted) return;
     Navigator.pushNamedAndRemoveUntil(
@@ -59,19 +82,23 @@ class AdminDashboardPage extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            TotalUsers(adminUserId: currentAdminUserId),
-            SizedBox(height: 24),
-            TotalSessions(adminUserId: currentAdminUserId),
-            SizedBox(height: 24),
-            StatusUser(adminUserId: currentAdminUserId),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _currentAdminUserId == null
+              ? const Center(child: Text('Error loading user profile.'))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TotalUsers(adminUserId: _currentAdminUserId!),
+                      const SizedBox(height: 24),
+                      TotalSessions(adminUserId: _currentAdminUserId!),
+                      const SizedBox(height: 24),
+                      StatusUser(adminUserId: _currentAdminUserId!),
+                    ],
+                  ),
+                ),
     );
   }
 }

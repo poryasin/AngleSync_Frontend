@@ -42,12 +42,15 @@ class _ScanScreenState extends State<ScanScreen> {
       // 2. ดึง exercises ทั้งหมดจาก backend
       final exercises = await ExerciseService.fetchExercises();
 
-      // 3. กรองตามเพศ (ถ้าไม่มีค่า gender ให้แสดงทั้งหมดไว้ก่อน)
-      if (_userGender != null && _userGender!.isNotEmpty) {
+      // 3. กรองตามเพศ (ถ้าเพศเป็น Male/Female ให้กรองเฉพาะเพศนั้น แต่ถ้าเป็น Unspecified หรือค่าอื่น ให้แสดงทั้งหมด)
+      final String? genderLower = _userGender?.toLowerCase();
+
+      if (genderLower == 'male' || genderLower == 'female') {
         _genderFilteredExercises = exercises.where((item) {
-          return item.gender.toLowerCase() == _userGender!.toLowerCase();
+          return item.gender.toLowerCase() == genderLower;
         }).toList();
       } else {
+        // กรณี Unspecified, null หรืออื่นๆ แสดงวิดีโอทั้งหมด (ทั้ง Male และ Female)
         _genderFilteredExercises = exercises;
       }
 
@@ -121,33 +124,37 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(
-              CupertinoIcons.xmark,
-              size: 22,
-              color: AppTheme.textDark,
-            ),
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    child: Row(
+      children: [
+        GestureDetector(
+          onTap: () {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home', 
+              (route) => false,
+            );
+          },
+          child: const Icon(
+            CupertinoIcons.xmark,
+            size: 22,
+            color: AppTheme.textDark,
           ),
-
-          const SizedBox(width: 14),
-
-          const Text(
-            'Categories',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textDark,
-            ),
+        ),
+        const SizedBox(width: 14),
+        const Text(
+          'Categories',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textDark,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildHero() {
     return Padding(

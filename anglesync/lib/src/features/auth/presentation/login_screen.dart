@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '/src/core/service/auth_service.dart';
 import '/src/core/theme/app_theme.dart';
-import 'gender_selection_screen.dart';
 import '/src/features/auth/auth_navigation.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,26 +15,36 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSigningIn = false;
 
   Future<void> _handleGoogleSignIn() async {
-  setState(() => _isSigningIn = true);
+    setState(() => _isSigningIn = true);
 
-  try {
-    final result = await _authService.signInWithGoogle();
-    if (!mounted) return;
-    navigateAfterAuth(context, result);   // ⬅️ เปลี่ยนมาเรียกตัวนี้แทน if/else เดิม
-  } on AuthException catch (error) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error.message)),
-    );
-  } catch (error) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Sign-in failed: $error')),
-    );
-  } finally {
-    if (mounted) setState(() => _isSigningIn = false);
+    try {
+      final result = await _authService.signInWithGoogle();
+      if (!mounted) return;
+      navigateAfterAuth(context, result);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      
+      // SRS-075: แสดง SnackBar สีแดง พร้อมข้อความแจ้งเตือนจาก Backend/AuthService
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign-in failed: $error'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSigningIn = false);
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {

@@ -11,18 +11,33 @@ class GenderSelectionScreen extends StatefulWidget {
 
 class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
   final AuthService _authService = AuthService();
+  
+  // 1. ตั้งค่าเป็น null เพื่อไม่ให้เลือกตัวเลือกใดเลยตอนเปิดหน้า
   String? _selected;
   bool _isSaving = false;
+  String? _errorMessage;
 
   static const List<Map<String, String>> _options = [
     {'label': 'Male', 'value': 'Male'},
     {'label': 'Female', 'value': 'Female'},
+    {'label': 'Prefer not to say', 'value': 'Unspecified'},
   ];
 
   Future<void> _confirm() async {
-    if (_selected == null || _isSaving) return;
+    // 2. ถ้าผู้ใช้ยังไม่เลือก ให้ขึ้นตัวหนังสือสีแดงและไม่ให้ไปต่อ
+    if (_selected == null) {
+      setState(() {
+        _errorMessage = 'Please select a gender option before proceeding.';
+      });
+      return;
+    }
 
-    setState(() => _isSaving = true);
+    if (_isSaving) return;
+
+    setState(() {
+      _errorMessage = null;
+      _isSaving = true;
+    });
 
     try {
       await _authService.completeProfile(_selected!);
@@ -48,13 +63,20 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
     }
   }
 
+  void _selectOption(String value) {
+    setState(() {
+      _selected = value;
+      _errorMessage = null; // 3. ล้างข้อความสีแดงเมื่อผู้ใช้เริ่มแตะเลือกตัวเลือก
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7F4),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -85,9 +107,25 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
                   child: _GenderOptionTile(
                     label: option['label']!,
                     isSelected: _selected == option['value'],
-                    onTap: () => setState(() => _selected = option['value']),
+                    onTap: () => _selectOption(option['value']!),
                   ),
                 ),
+
+              // 4. แสดงข้อความแจ้งเตือนสีแดงใต้รายการตัวเลือก
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4.0),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
 
               const Spacer(),
 
@@ -95,10 +133,10 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _selected == null || _isSaving ? null : _confirm,
+                  onPressed: _isSaving ? null : _confirm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.green,
-                    disabledBackgroundColor: Colors.grey.shade300,
+                    disabledBackgroundColor: AppTheme.green.withOpacity(0.6),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
@@ -152,12 +190,21 @@ class _GenderOptionTile extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.green.withOpacity(0.1) : Colors.white,
+          color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppTheme.green : Colors.grey.shade300,
-            width: isSelected ? 1.5 : 1,
+            color: isSelected ? AppTheme.green : Colors.transparent,
+            width: isSelected ? 2 : 1,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.green.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
         child: Row(
           children: [
@@ -166,15 +213,23 @@ class _GenderOptionTile extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? AppTheme.green : AppTheme.textDark,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: AppTheme.textDark,
                 ),
               ),
             ),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: AppTheme.green, size: 22)
-            else
-              Icon(Icons.circle_outlined, color: Colors.grey.shade300, size: 22),
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppTheme.green : Colors.grey.shade300,
+                  width: isSelected ? 6 : 1.5,
+                ),
+                color: Colors.white,
+              ),
+            ),
           ],
         ),
       ),

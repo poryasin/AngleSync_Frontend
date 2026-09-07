@@ -1,12 +1,22 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:anglesync/src/core/config/backend_config.dart';
+import 'package:anglesync/src/core/service/auth_service.dart'; // เพิ่ม import AuthService
 import 'package:anglesync/src/features/scan/domain/exercise_item.dart';
 
 class ExerciseService {
   static Future<List<ExerciseItem>> fetchExercises() async {
+    // 1. ดึง Token จาก AuthService
+    final authService = AuthService();
+    final String? token = await authService.getToken();
+
+    // 2. แนบ Bearer Token เข้าไปใน Headers
     final response = await http.get(
       Uri.parse('${BackendConfig.baseUrl}/exercises'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
     );
 
     if (response.statusCode == 200) {
@@ -24,7 +34,7 @@ class ExerciseService {
         );
       }).toList();
     } else {
-      throw Exception('Failed to load exercises');
+      throw Exception('Failed to load exercises: ${response.statusCode}');
     }
   }
 }
