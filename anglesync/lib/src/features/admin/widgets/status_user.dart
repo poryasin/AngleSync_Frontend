@@ -53,8 +53,9 @@ class _StatusUserState extends State<StatusUser> {
 
   Future<void> _handleToggle(AdminUser user, bool wantsInactive) async {
     // ป้องกัน admin ปิดการใช้งานบัญชีตัวเอง (reactivate ตัวเองยังทำได้ปกติ)
+    // เช็คฝั่ง frontend ก่อนเสมอ เพื่อ UX ที่เร็วและไม่ต้องรอ network round-trip
     if (wantsInactive && user.userId == widget.adminUserId) {
-      _showSnackBar('An admin cannot deactivate their own account.');
+      _showAutoDismissDialog('You cannot deactivate your own account.');
       return;
     }
 
@@ -106,6 +107,8 @@ class _StatusUserState extends State<StatusUser> {
       _showSnackBar(message);
       _loadUsers();
     } on AdminApiException catch (error) {
+      // fallback กรณี frontend เช็คพลาด (เช่น เผลอ deactivate ตัวเองผ่านทางอื่น)
+      // backend จะ raise SelfStatusUpdateNotAllowedException กลับมาที่นี่
       _showSnackBar(error.message);
     } catch (_) {
       _showSnackBar('Unable to update user status. Please try again.');
@@ -116,6 +119,45 @@ class _StatusUserState extends State<StatusUser> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
+    );
+  }
+
+  void _showAutoDismissDialog(String message) {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        // ปิด dialog อัตโนมัติหลัง 3 วินาที
+        Future.delayed(const Duration(seconds: 3), () {
+          if (Navigator.of(dialogContext).canPop()) {
+            Navigator.of(dialogContext).pop();
+          }
+        });
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.block, color: Colors.red),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -190,7 +232,6 @@ class _StatusUserState extends State<StatusUser> {
       itemBuilder: (context, index) {
         final user = _users[index];
         final isInactive = user.isInactive;
-        final isAdmin = user.userRole == 'Admin';
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -230,12 +271,11 @@ class _StatusUserState extends State<StatusUser> {
                   ],
                 ),
               ),
-              if (!isAdmin)
-                Switch(
-                  value: !isInactive,
-                  activeColor: AppTheme.green,
-                  onChanged: (isActive) => _handleToggle(user, !isActive),
-                ),
+              Switch(
+                value: !isInactive,
+                activeColor: AppTheme.green,
+                onChanged: (isActive) => _handleToggle(user, !isActive),
+              ),
             ],
           ),
         );
