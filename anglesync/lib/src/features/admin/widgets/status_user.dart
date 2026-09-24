@@ -55,41 +55,14 @@ class _StatusUserState extends State<StatusUser> {
     // ป้องกัน admin ปิดการใช้งานบัญชีตัวเอง (reactivate ตัวเองยังทำได้ปกติ)
     // เช็คฝั่ง frontend ก่อนเสมอ เพื่อ UX ที่เร็วและไม่ต้องรอ network round-trip
     if (wantsInactive && user.userId == widget.adminUserId) {
-      _showAutoDismissDialog('You cannot deactivate your own account.');
+      _showActionNotAllowedDialog('You cannot deactivate your own account.');
       return;
     }
 
     // ทั้งสองทิศทาง (ปิด / เปิดกลับ) ต้องยืนยันก่อนเสมอ
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Text(wantsInactive ? 'Deactivate user' : 'Activate user'),
-        content: Text(
-          'Are you sure you want to set "${user.username}" to '
-          '${wantsInactive ? 'Inactive' : 'Active'}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              'Confirm',
-              style: TextStyle(
-                color: wantsInactive ? Colors.red : AppTheme.green,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await _showConfirmDialog(
+      username: user.username,
+      wantsInactive: wantsInactive,
     );
 
     if (confirmed != true) {
@@ -104,60 +77,295 @@ class _StatusUserState extends State<StatusUser> {
         targetUserId: user.userId,
         newStatus: newStatus,
       );
-      _showSnackBar(message);
+      _showStatusBanner(
+        title: 'Status updated',
+        message: message,
+        isSuccess: true,
+      );
       _loadUsers();
     } on AdminApiException catch (error) {
       // fallback กรณี frontend เช็คพลาด (เช่น เผลอ deactivate ตัวเองผ่านทางอื่น)
       // backend จะ raise SelfStatusUpdateNotAllowedException กลับมาที่นี่
-      _showSnackBar(error.message);
+      _showStatusBanner(
+        title: 'Update failed',
+        message: error.message,
+        isSuccess: false,
+      );
     } catch (_) {
-      _showSnackBar('Unable to update user status. Please try again.');
+      _showStatusBanner(
+        title: 'Update failed',
+        message: 'Unable to update user status. Please try again.',
+        isSuccess: false,
+      );
     }
   }
 
-  void _showSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+  /// Dialog ยืนยันแบบมี icon วงกลม + ข้อความกึ่งกลาง + ปุ่มเต็มความกว้าง
+  Future<bool?> _showConfirmDialog({
+    required String username,
+    required bool wantsInactive,
+  }) {
+    final actionColor = wantsInactive ? Colors.red : AppTheme.green;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: actionColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  wantsInactive ? Icons.person_off_rounded : Icons.person_rounded,
+                  color: actionColor,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                wantsInactive ? 'Deactivate user' : 'Activate user',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Set "$username" to '
+                '${wantsInactive ? 'Inactive' : 'Active'}?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.green,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Confirm',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  void _showAutoDismissDialog(String message) {
+  /// การ์ดแจ้งผลแบบ floating (สำเร็จ = เขียว, ล้มเหลว = แดง)
+  void _showStatusBanner({
+    required String title,
+    required String message,
+    required bool isSuccess,
+  }) {
+    if (!mounted) return;
+
+    final accentColor = isSuccess ? AppTheme.green : Colors.red;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.white,
+        elevation: 4,
+        duration: const Duration(seconds: 3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        content: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isSuccess ? Icons.check_rounded : Icons.close_rounded,
+                color: accentColor,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Dialog แจ้งเตือนเมื่อ Admin พยายาม deactivate บัญชีตัวเอง
+  void _showActionNotAllowedDialog(String message) {
     if (!mounted) return;
 
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (dialogContext) {
-        // ปิด dialog อัตโนมัติหลัง 3 วินาที
-        Future.delayed(const Duration(seconds: 3), () {
-          if (Navigator.of(dialogContext).canPop()) {
-            Navigator.of(dialogContext).pop();
-          }
-        });
-
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          content: Row(
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.block, color: Colors.red),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textDark,
+              SizedBox(
+                width: 72,
+                height: 72,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.shield_rounded,
+                        color: Colors.red,
+                        size: 34,
+                      ),
+                    ),
+                    Positioned(
+                      right: 12,
+                      bottom: 16,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.do_not_disturb_on_rounded,
+                          color: Colors.red,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Action not allowed',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                  ),
+                  child: const Text(
+                    'Got it',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
