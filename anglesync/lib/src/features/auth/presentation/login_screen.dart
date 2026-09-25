@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
       navigateAfterAuth(context, result);
     } on AuthException catch (error) {
       if (!mounted) return;
-      
+
       // SRS-075: แสดง SnackBar สีแดง พร้อมข้อความแจ้งเตือนจาก Backend/AuthService
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -55,43 +55,37 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              const Spacer(flex: 2),
-
-              // โลโก้/ไอคอนแอป
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: AppTheme.green.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(
-                  Icons.accessibility_new_rounded,
-                  color: AppTheme.green,
-                  size: 48,
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              const Text(
-                'AngleSync',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textDark,
-                  letterSpacing: -0.5,
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              Text(
-                'Move better. Train smarter.',
-                style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
-              ),
-
+              // Spacer ด้านบนโลโก้
               const Spacer(flex: 3),
+
+              // โลโก้แอป
+              Center(
+                child: SizedBox(
+                  width: 240,
+                  height: 240,
+                  child: Image.asset(
+                    'assets/images/logo_AngleSync.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // ข้อความสโลแกนใต้โลโก้
+              const Text(
+                'Smart AI Assistant\nfor Movement & Posture',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF667085),
+                  letterSpacing: 0.1,
+                ),
+              ),
+
+              // Spacer คั่นระหว่างโลโก้กับกลุ่มปุ่ม (flex 2)
+              const Spacer(flex: 2),
 
               // ปุ่ม Sign in with Google
               SizedBox(
@@ -139,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               Text(
                 'By continuing, you agree to our Terms of Service\nand Privacy Policy.',
@@ -147,7 +141,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
               ),
 
-              const Spacer(),
+              // เพิ่ม Spacer/SizedBox ด้านล่างสุดเพื่อขยับกลุ่มปุ่มขึ้นไปด้านบน
+              const SizedBox(height: 48), // หรือปรับความสูงตรงนี้ตามต้องการ (เช่น 40 - 80)
             ],
           ),
         ),

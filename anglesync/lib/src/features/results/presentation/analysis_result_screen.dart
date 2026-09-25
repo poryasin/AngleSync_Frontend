@@ -38,6 +38,35 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7F4),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: false, 
+        titleSpacing: 8,    
+        title: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                CupertinoIcons.chevron_left,
+                size: 20,
+                color: AppTheme.textDark, 
+              ),
+              SizedBox(width: 4),
+              Text(
+                'Upload',
+                style: TextStyle(
+                  fontSize: 17,
+                  color: AppTheme.textDark, 
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Stack(
           children: [
@@ -100,7 +129,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
             if (_isDeleting)
               Positioned.fill(
                 child: Container(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -109,14 +138,28 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           CircularProgressIndicator(color: AppTheme.green),
                           SizedBox(width: 18),
-                          Text('Deleting result...'),
+                          Text(
+                            'Deleting result...',
+                            style: TextStyle(
+                              color: AppTheme.textDark,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -130,112 +173,99 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
   }
 
   Widget _buildProgress(BuildContext context, String message, int percent) {
-    return Column(
-      children: [
-        _appBar(context),
-        const Divider(height: 1),
-        Expanded(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 90,
-                  height: 90,
-                  child: CircularProgressIndicator(
-                    value: percent / 100,
-                    strokeWidth: 7,
-                    color: AppTheme.green,
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Text(
-                  '$percent%',
-                  style: const TextStyle(
-                    fontSize: 42,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  message,
-                  style: TextStyle(
-                    fontSize: 17,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 90,
+            height: 90,
+            child: CircularProgressIndicator(
+              value: percent / 100,
+              strokeWidth: 7,
+              color: AppTheme.green,
+              backgroundColor: AppTheme.green.withValues(alpha: 0.15),
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 30),
+          Text(
+            '$percent%',
+            style: const TextStyle(
+              fontSize: 42,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textDark,
+              letterSpacing: -1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildResult(BuildContext context, AnalysisResult result) {
-    return Column(
-      children: [
-        _appBar(context),
-        const Divider(height: 1, thickness: 1),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildScoreCard(result),
-                const SizedBox(height: 20),
-                if (result.riskScores.isNotEmpty)
-                  RiskGraph(
-                    riskScores: result.riskScores,
-                    frameTimes: result.frameTimes,
-                    highestRiskFrameIndex: result.highestRiskFrameIndex,
-                    highestRiskImageUrl: result.highestRiskImageUrl,
-                  ),
-                if (result.riskScores.isNotEmpty) const SizedBox(height: 20),
-                _buildFeedbackCard(
-                  title: 'Form Summary',
-                  items: const [],
-                  icon: Icons.assignment_outlined,
-                  customContent: Text(
-                    result.feedback?.formSummary ?? '',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF444444),
-                      height: 1.6,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildFeedbackCard(
-                  title: 'Injury Risk',
-                  items: result.feedback?.injuryRisk ?? [],
-                  icon: Icons.shield_outlined,
-                  iconColor: const Color(0xFFE53935),
-                  iconBg: const Color(0xFFFFECEC),
-                  useBullet: true,
-                ),
-                const SizedBox(height: 12),
-                _buildFeedbackCard(
-                  title: 'Corrective Cues',
-                  items: result.feedback?.correctiveCues ?? [],
-                  icon: Icons.track_changes_outlined,
-                ),
-                const SizedBox(height: 12),
-                _buildFeedbackCard(
-                  title: 'Practice Plan',
-                  items: result.feedback?.practicePlan ?? [],
-                  icon: Icons.calendar_today_outlined,
-                ),
-                const SizedBox(height: 24),
-                _buildResultActionButton(context, result),
-                const SizedBox(height: 32),
-              ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildScoreCard(result),
+          const SizedBox(height: 20),
+          if (result.riskScores.isNotEmpty)
+            RiskGraph(
+              riskScores: result.riskScores,
+              frameTimes: result.frameTimes,
+              highestRiskFrameIndex: result.highestRiskFrameIndex,
+              highestRiskImageUrl: result.highestRiskImageUrl,
+            ),
+          if (result.riskScores.isNotEmpty) const SizedBox(height: 20),
+          _buildFeedbackCard(
+            title: 'Form Summary',
+            items: const [],
+            icon: Icons.assignment_outlined,
+            customContent: Text(
+              result.feedback?.formSummary ?? '',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade800,
+                height: 1.6,
+              ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          _buildFeedbackCard(
+            title: 'Injury Risk',
+            items: result.feedback?.injuryRisk ?? [],
+            icon: Icons.shield_outlined,
+            iconColor: Colors.red.shade600,
+            iconBg: Colors.red.withValues(alpha: 0.1),
+            useBullet: true,
+          ),
+          const SizedBox(height: 16),
+          _buildFeedbackCard(
+            title: 'Corrective Cues',
+            items: result.feedback?.correctiveCues ?? [],
+            icon: Icons.track_changes_outlined,
+          ),
+          const SizedBox(height: 16),
+          _buildFeedbackCard(
+            title: 'Practice Plan',
+            items: result.feedback?.practicePlan ?? [],
+            icon: Icons.calendar_today_outlined,
+          ),
+          const SizedBox(height: 24),
+          _buildResultActionButton(context, result),
+          const SizedBox(height: 16),
+        ],
+      ),
     );
   }
 
@@ -243,24 +273,23 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
     if (widget.isSavedSession) {
       return SizedBox(
         width: double.infinity,
-        height: 58,
-        child: ElevatedButton.icon(
+        height: 52,
+        child: FilledButton.icon(
           onPressed: _isDeleting ? null : () => _handleDeleteResult(context),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFE53935),
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.red.shade600,
+            foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
           icon: const Icon(Icons.delete_outline, color: Colors.white),
           label: const Text(
             "Delete Result",
             style: TextStyle(
-              color: Colors.white,
               fontSize: 16,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.3,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -269,8 +298,8 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
 
     return SizedBox(
       width: double.infinity,
-      height: 58,
-      child: ElevatedButton.icon(
+      height: 52,
+      child: FilledButton.icon(
         onPressed: () async {
           final sessionName = await SaveSessionDialog.show(context);
           if (sessionName == null || !context.mounted) return;
@@ -278,13 +307,15 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
           showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (_) => const Center(child: CircularProgressIndicator()),
+            builder: (_) => const Center(
+              child: CircularProgressIndicator(color: AppTheme.green),
+            ),
           );
 
           try {
-            // ดึง ID ผู้ใช้ที่ล็อกอินอยู่ปัจจุบันตรงนี้
             final authService = AuthService();
-            final currentUserId = await authService.getCurrentUserId() ?? widget.userId;
+            final currentUserId =
+                await authService.getCurrentUserId() ?? widget.userId;
 
             await saveAnalysisResult(
               sessionName: sessionName,
@@ -321,21 +352,20 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
             ).showSnackBar(SnackBar(content: Text(e.message)));
           }
         },
-        style: ElevatedButton.styleFrom(
+        style: FilledButton.styleFrom(
           backgroundColor: AppTheme.green,
+          foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
-        icon: const Icon(Icons.save, color: Colors.white),
+        icon: const Icon(Icons.save_rounded, color: Colors.white),
         label: const Text(
           "Save Result",
           style: TextStyle(
-            color: Colors.white,
             fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.3,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -353,21 +383,89 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete result?'),
-        content: const Text(
-          'This analysis session will be permanently deleted.',
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.red.shade600,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Delete result?',
+                style: TextStyle(
+                  color: AppTheme.textDark,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'This analysis session will be permanently deleted.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 15,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.textDark,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
       ),
     );
 
@@ -409,10 +507,10 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -428,7 +526,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                 children: [
                   Icon(
                     Icons.verified_user_outlined,
-                    color: Colors.green,
+                    color: AppTheme.green,
                     size: 20,
                   ),
                   SizedBox(width: 8),
@@ -436,29 +534,29 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                     "POSTURE SCORE",
                     style: TextStyle(
                       fontSize: 13,
-                      letterSpacing: 1.5,
+                      letterSpacing: 1.2,
                       color: Color(0xFF667085),
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
+                  horizontal: 12,
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDDF5E5),
+                  color: AppTheme.green.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Text(
                   result.riskLevel.toUpperCase(),
                   style: const TextStyle(
-                    color: Colors.green,
+                    color: AppTheme.green,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    letterSpacing: 1,
+                    letterSpacing: 0.8,
                   ),
                 ),
               ),
@@ -471,32 +569,32 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                 TextSpan(
                   text: score.toStringAsFixed(1),
                   style: const TextStyle(
-                    fontSize: 72,
+                    fontSize: 68,
                     fontWeight: FontWeight.w900,
-                    color: Colors.green,
+                    color: AppTheme.green,
                     height: 1,
                     letterSpacing: -2,
                   ),
                 ),
-                TextSpan(
-                  text: "/$scale",
-                  style: const TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w400,
+                const TextSpan(
+                  text: "/100",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w500,
                     color: Color(0xFF667085),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 14,
+              minHeight: 12,
               backgroundColor: const Color(0xFFEAEAEA),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.green),
             ),
           ),
         ],
@@ -518,12 +616,12 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -533,38 +631,38 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: iconBg ?? const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(8),
+                  color: iconBg ?? AppTheme.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon ?? Icons.info_outline,
-                  color: iconColor ?? Colors.green,
-                  size: 17,
+                  color: iconColor ?? AppTheme.green,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A1A),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textDark,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          const Divider(color: Color(0xFFF5F5F5), height: 1),
+          Divider(color: Colors.grey.shade200, height: 1),
           const SizedBox(height: 14),
           if (customContent != null)
             customContent
           else if (items.isEmpty)
             Text(
               'No feedback provided.',
-              style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
             )
           else
             Column(
@@ -577,12 +675,12 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                     children: [
                       if (useBullet)
                         Padding(
-                          padding: const EdgeInsets.only(top: 6),
+                          padding: const EdgeInsets.only(top: 7),
                           child: Container(
-                            width: 7,
-                            height: 7,
+                            width: 6,
+                            height: 6,
                             decoration: BoxDecoration(
-                              color: iconColor ?? Colors.green,
+                              color: iconColor ?? AppTheme.green,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -592,7 +690,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                           width: 22,
                           height: 22,
                           decoration: BoxDecoration(
-                            color: iconBg ?? const Color(0xFFE8F5E9),
+                            color: iconBg ?? AppTheme.green.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -601,7 +699,7 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: iconColor ?? Colors.green,
+                                color: iconColor ?? AppTheme.green,
                               ),
                             ),
                           ),
@@ -610,9 +708,9 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
                       Expanded(
                         child: Text(
                           entry.value,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
-                            color: Color(0xFF1A1A1A),
+                            color: Colors.grey.shade800,
                             height: 1.5,
                           ),
                         ),
@@ -655,129 +753,116 @@ class _AnalysisResultScreenState extends State<AnalysisResultScreen> {
     required String title,
     required String message,
   }) {
-    return Column(
-      children: [
-        _appBar(context),
-        const Divider(height: 1),
-        Expanded(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(28),
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.orange,
-                      size: 44,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      message,
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 16,
-                        height: 1.5,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          widget.onMismatch?.call();
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.green,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: const Text(
-                          'Choose another video',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 28,
                 ),
               ),
-            ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textDark,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 15,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton(
+                  onPressed: () {
+                    widget.onMismatch?.call();
+                    Navigator.pop(context);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Choose another video',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildError(BuildContext context, String error) {
-    return Column(
-      children: [
-        _appBar(context),
-        const Divider(height: 1),
-        Expanded(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                error,
-                style: const TextStyle(color: Colors.red, fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _appBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                CupertinoIcons.chevron_left,
-                size: 20,
-                color: CupertinoColors.activeBlue,
-              ),
-              SizedBox(width: 4),
-              Text(
-                'Upload',
-                style: TextStyle(
-                  fontSize: 17,
-                  color: CupertinoColors.activeBlue,
-                ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
             ],
+          ),
+          child: Text(
+            error,
+            style: TextStyle(
+              color: Colors.red.shade600,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
           ),
         ),
       ),

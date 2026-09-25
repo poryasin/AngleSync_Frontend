@@ -288,13 +288,13 @@ class _UploadAppBar extends StatelessWidget {
               children: [
                 Icon(
                   CupertinoIcons.chevron_left,
-                  color: CupertinoColors.activeBlue,
+                  color: AppTheme.textDark,
                 ),
                 SizedBox(width: 4),
                 Text(
                   'Categories',
                   style: TextStyle(
-                    color: CupertinoColors.activeBlue,
+                    color: AppTheme.textDark,
                     fontSize: 17,
                   ),
                 ),

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// Pop-up dialog for entering a Session Name when saving an analysis result.
-/// SRS-014: if left blank, auto-assigns a default name (Session_YYYYMMDD_HHMMSS).
 class SaveSessionDialog extends StatelessWidget {
   const SaveSessionDialog({super.key});
 

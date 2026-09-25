@@ -122,6 +122,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
       firstDate: DateTime(now.year - 5),
       lastDate: now,
       initialDate: _selectedDateRange?.start ?? now,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppTheme.green),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -169,45 +179,42 @@ class _HistoryScreenState extends State<HistoryScreen> {
       if (!mounted) return;
       Navigator.pop(context); // ปิด Dialog Loading
 
-      // ดึง AnalysisResult ออกมา
       final AnalysisResult analysisResult =
           detail.result['analysis_obj'] is AnalysisResult
           ? detail.result['analysis_obj'] as AnalysisResult
           : AnalysisResult.fromJson(detail.result, detail.title);
 
       final deleted = await Navigator.push<bool>(
-  context,
-  MaterialPageRoute(
-    builder: (_) => AnalysisResultScreen(
-      analysisStream: Stream<AnalysisEvent>.multi((controller) {
-        controller.add(ResultEvent(analysisResult));
-        controller.close();
-      }),
-      userId: detail.userId,
-      referenceVideoId: detail.referenceVideoId,
-      videoUserUrl: detail.videoUserUrl,
-      isSavedSession: true,
-      sessionId: detail.sessionId,
-    ),
-  ),
-);
+        context,
+        MaterialPageRoute(
+          builder: (_) => AnalysisResultScreen(
+            analysisStream: Stream<AnalysisEvent>.multi((controller) {
+              controller.add(ResultEvent(analysisResult));
+              controller.close();
+            }),
+            userId: detail.userId,
+            referenceVideoId: detail.referenceVideoId,
+            videoUserUrl: detail.videoUserUrl,
+            isSavedSession: true,
+            sessionId: detail.sessionId,
+          ),
+        ),
+      );
 
-if (deleted == true && mounted) {
-  await Future.delayed(const Duration(milliseconds: 400));
-  if (!mounted) return;
+      if (deleted == true && mounted) {
+        await Future.delayed(const Duration(milliseconds: 400));
+        if (!mounted) return;
 
-  try {
-    await _refresh();
-  } catch (_) {
-    // เงียบไว้ก็พอ ถ้า refresh ไม่สำเร็จ list จะยังโชว์ข้อมูลเดิมค้างอยู่
-  }
+        try {
+          await _refresh();
+        } catch (_) {}
 
-  if (mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Result deleted.')),
-    );
-  }
-}
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Result deleted.')),
+          );
+        }
+      }
     } on AnalysisException catch (error) {
       if (!mounted) return;
       Navigator.pop(context);
@@ -227,6 +234,7 @@ if (deleted == true && mounted) {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete scan?'),
         content: Text('Delete "${item.title}"? This action cannot be undone.'),
         actions: [
@@ -284,10 +292,10 @@ if (deleted == true && mounted) {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // Header & Controls Section
+              // Header & Filter Controls Section
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -305,122 +313,243 @@ if (deleted == true && mounted) {
                         'Your latest posture analysis sessions.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey.shade500,
+                          color: Colors.grey.shade600,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
-                      // Search bar
-                      TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search by title...',
-                          prefixIcon: const Icon(
-                            CupertinoIcons.search,
-                            size: 20,
+                      // 1. Search Bar (UI Refactored)
+                      Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 12,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.textDark,
+                            fontWeight: FontWeight.w500,
                           ),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(
-                                    CupertinoIcons.clear_circled_solid,
-                                    size: 18,
-                                  ),
-                                  onPressed: () => _searchController.clear(),
-                                )
-                              : null,
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 0,
-                            horizontal: 14,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                          decoration: InputDecoration(
+                            hintText: 'Search by title...',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Icon(
+                              CupertinoIcons.search,
+                              size: 18,
+                              color: Colors.grey.shade500,
+                            ),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(
+                                      CupertinoIcons.clear_circled_solid,
+                                      size: 18,
+                                    ),
+                                    color: Colors.grey.shade400,
+                                    onPressed: () => _searchController.clear(),
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 14),
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
 
-                      // Controls
+                      // 2. Filter & Sort Actions Bar (UI Refactored)
                       Row(
                         children: [
+                          // Sort Button (Newest / Oldest)
                           Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => setState(
-                                () => _sortAscending = !_sortAscending,
-                              ),
-                              icon: Icon(
-                                _sortAscending
-                                    ? CupertinoIcons.arrow_up
-                                    : CupertinoIcons.arrow_down,
-                                size: 16,
-                              ),
-                              label: Text(
-                                _sortAscending
-                                    ? 'Oldest first'
-                                    : 'Newest first',
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppTheme.textDark,
-                                side: BorderSide(color: Colors.grey.shade300),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
+                            child: Material(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              child: InkWell(
+                                onTap: () => setState(
+                                  () => _sortAscending = !_sortAscending,
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(14),
+                                child: Container(
+                                  height: 44,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    border:
+                                        Border.all(color: Colors.grey.shade200),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        _sortAscending
+                                            ? Icons.arrow_upward_rounded
+                                            : Icons.arrow_downward_rounded,
+                                        size: 16,
+                                        color: AppTheme.green,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _sortAscending
+                                            ? 'Oldest first'
+                                            : 'Newest first',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.textDark,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+
+                          const SizedBox(width: 10),
+
+                          // Date Filter PopupMenu Button
                           Expanded(
                             child: PopupMenuButton<String>(
+                              elevation: 4,
+                              shadowColor: Colors.black.withOpacity(0.12),
+                              offset: const Offset(0, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              color: Colors.white,
                               onSelected: (value) {
                                 if (value == 'range') _pickDateRange();
                                 if (value == 'single') _pickSingleDate();
                                 if (value == 'clear') _clearDateFilter();
                               },
                               itemBuilder: (context) => [
-                                const PopupMenuItem(
+                                PopupMenuItem<String>(
                                   value: 'single',
-                                  child: Text('Pick a date'),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'range',
-                                  child: Text('Pick a date range'),
-                                ),
-                                if (_selectedDateRange != null)
-                                  const PopupMenuItem(
-                                    value: 'clear',
-                                    child: Text('Clear filter'),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today_outlined,
+                                        size: 18,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Pick a date',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.textDark,
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                ),
+                                PopupMenuDivider(
+                                    height: 1, color: Colors.grey.shade200),
+                                PopupMenuItem<String>(
+                                  value: 'range',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.date_range_outlined,
+                                        size: 18,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Pick a date range',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.textDark,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (_selectedDateRange != null) ...[
+                                  PopupMenuDivider(
+                                      height: 1, color: Colors.grey.shade200),
+                                  const PopupMenuItem<String>(
+                                    value: 'clear',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.clear_rounded,
+                                          size: 18,
+                                          color: Colors.redAccent,
+                                        ),
+                                        SizedBox(width: 12),
+                                        Text(
+                                          'Clear filter',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.redAccent,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ],
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 12,
-                                ),
+                                height: 44,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
+                                  color: Colors.white,
                                   border: Border.all(
-                                    color: Colors.grey.shade300,
+                                    color: _selectedDateRange != null
+                                        ? AppTheme.green
+                                        : Colors.grey.shade200,
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(
-                                      CupertinoIcons.calendar,
-                                      size: 16,
+                                    Icon(
+                                      Icons.filter_alt_outlined,
+                                      size: 18,
+                                      color: _selectedDateRange != null
+                                          ? AppTheme.green
+                                          : Colors.grey.shade600,
                                     ),
                                     const SizedBox(width: 6),
                                     Flexible(
                                       child: Text(
                                         _dateFilterLabel,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 13),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: _selectedDateRange != null
+                                              ? AppTheme.green
+                                              : AppTheme.textDark,
+                                        ),
                                       ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      size: 18,
+                                      color: _selectedDateRange != null
+                                          ? AppTheme.green
+                                          : Colors.grey.shade500,
                                     ),
                                   ],
                                 ),
@@ -552,7 +681,7 @@ class _ScanHistoryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),

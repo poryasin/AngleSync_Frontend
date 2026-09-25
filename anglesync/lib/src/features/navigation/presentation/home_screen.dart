@@ -115,22 +115,89 @@ class _AppBar extends StatelessWidget {
   Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Colors.red,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Log out?',
+                style: TextStyle(
+                  color: AppTheme.textDark,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You will need to sign in again to access your account.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 15,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.textDark,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Log out',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        title: const Text('Log out'),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey.shade600)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Log out', style: TextStyle(color: Colors.red)),
-          ),
-        ],
       ),
     );
 
@@ -159,13 +226,17 @@ class _AppBar extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppTheme.green,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  CupertinoIcons.waveform_path,
                   color: Colors.white,
-                  size: 22,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.green, width: 1.5),
+                ),
+                padding: const EdgeInsets.all(2),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(9),
+                  child: Image.asset(
+                    'assets/images/logo_AngleSync_symbol.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -180,26 +251,17 @@ class _AppBar extends StatelessWidget {
               ),
             ],
           ),
-          GestureDetector(
-            onTap: () => _handleLogout(context),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(
-                CupertinoIcons.square_arrow_right,
-                color: Colors.grey.shade600,
-                size: 20,
+          Tooltip(
+            message: 'Log out',
+            child: IconButton(
+              onPressed: () => _handleLogout(context),
+              icon: const Icon(Icons.logout_rounded),
+              color: Colors.red.shade600,
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white,
+                fixedSize: const Size(44, 44),
+                elevation: 2,
+                shadowColor: Colors.black.withValues(alpha: 0.08),
               ),
             ),
           ),

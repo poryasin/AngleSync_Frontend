@@ -67,7 +67,8 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-      - assets/videos/
+      - assets/images/logo_AngleSync.png
+      - assets/images/logo_AngleSync_symbol.png
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
