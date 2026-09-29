@@ -12,7 +12,6 @@ class GenderSelectionScreen extends StatefulWidget {
 class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
   final AuthService _authService = AuthService();
   
-  // 1. ตั้งค่าเป็น null เพื่อไม่ให้เลือกตัวเลือกใดเลยตอนเปิดหน้า
   String? _selected;
   bool _isSaving = false;
   String? _errorMessage;
@@ -24,7 +23,6 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
   ];
 
   Future<void> _confirm() async {
-    // 2. ถ้าผู้ใช้ยังไม่เลือก ให้ขึ้นตัวหนังสือสีแดงและไม่ให้ไปต่อ
     if (_selected == null) {
       setState(() {
         _errorMessage = 'Please select a gender option before proceeding.';
@@ -66,7 +64,7 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
   void _selectOption(String value) {
     setState(() {
       _selected = value;
-      _errorMessage = null; // 3. ล้างข้อความสีแดงเมื่อผู้ใช้เริ่มแตะเลือกตัวเลือก
+      _errorMessage = null; 
     });
   }
 
@@ -111,7 +109,6 @@ class _GenderSelectionScreenState extends State<GenderSelectionScreen> {
                   ),
                 ),
 
-              // 4. แสดงข้อความแจ้งเตือนสีแดงใต้รายการตัวเลือก
               if (_errorMessage != null) ...[
                 const SizedBox(height: 8),
                 Padding(

@@ -23,6 +23,10 @@ class _TotalSessionsState extends State<TotalSessions> {
   String? _errorMessage;
   List<AdminSession> _sessions = [];
 
+  static const int _maxVisibleSessionsBeforeScroll = 10;
+  static const double _sessionCardHeight = 72;
+  static const double _sessionCardSpacing = 10;
+
   @override
   void initState() {
     super.initState();
@@ -200,11 +204,13 @@ class _TotalSessionsState extends State<TotalSessions> {
       );
     }
 
-    return ListView.separated(
+    final sessionListView = ListView.separated(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      physics: _sessions.length > _maxVisibleSessionsBeforeScroll
+          ? const AlwaysScrollableScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       itemCount: _sessions.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: _sessionCardSpacing),
       itemBuilder: (context, index) {
         final session = _sessions[index];
         return _SessionCard(
@@ -215,6 +221,25 @@ class _TotalSessionsState extends State<TotalSessions> {
         );
       },
     );
+
+    // เกิน 10 session: จำกัดความสูงเท่ากับ ~10 การ์ด แล้วให้เลื่อนดูที่เหลือ
+    // ผ่าน scrollbar ของตัวเอง แทนที่จะปล่อยให้ section นี้ขยายทั้งหน้าไปเรื่อย ๆ
+    if (_sessions.length > _maxVisibleSessionsBeforeScroll) {
+      final visibleHeight =
+          (_sessionCardHeight * _maxVisibleSessionsBeforeScroll) +
+          (_sessionCardSpacing * (_maxVisibleSessionsBeforeScroll - 1));
+
+      return SizedBox(
+        height: visibleHeight,
+        child: Scrollbar(
+          thumbVisibility: true,
+          radius: const Radius.circular(8),
+          child: sessionListView,
+        ),
+      );
+    }
+
+    return sessionListView;
   }
 }
 

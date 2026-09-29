@@ -23,7 +23,6 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (result == null) {
-      // ไม่มี session ค้าง หรือ token หมดอายุ -> ไปหน้า login
       Navigator.pushNamedAndRemoveUntil(context, AppRouter.login, (route) => false);
       return;
     }

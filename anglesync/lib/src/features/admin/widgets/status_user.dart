@@ -20,6 +20,10 @@ class _StatusUserState extends State<StatusUser> {
   String? _errorMessage;
   List<AdminUser> _users = [];
 
+  static const int _maxVisibleUsersBeforeScroll = 10;
+  static const double _userCardHeight = 66;
+  static const double _userCardSpacing = 10;
+
   @override
   void initState() {
     super.initState();
@@ -52,14 +56,11 @@ class _StatusUserState extends State<StatusUser> {
   }
 
   Future<void> _handleToggle(AdminUser user, bool wantsInactive) async {
-    // ป้องกัน admin ปิดการใช้งานบัญชีตัวเอง (reactivate ตัวเองยังทำได้ปกติ)
-    // เช็คฝั่ง frontend ก่อนเสมอ เพื่อ UX ที่เร็วและไม่ต้องรอ network round-trip
     if (wantsInactive && user.userId == widget.adminUserId) {
       _showActionNotAllowedDialog('You cannot deactivate your own account.');
       return;
     }
 
-    // ทั้งสองทิศทาง (ปิด / เปิดกลับ) ต้องยืนยันก่อนเสมอ
     final confirmed = await _showConfirmDialog(
       username: user.username,
       wantsInactive: wantsInactive,
@@ -84,8 +85,6 @@ class _StatusUserState extends State<StatusUser> {
       );
       _loadUsers();
     } on AdminApiException catch (error) {
-      // fallback กรณี frontend เช็คพลาด (เช่น เผลอ deactivate ตัวเองผ่านทางอื่น)
-      // backend จะ raise SelfStatusUpdateNotAllowedException กลับมาที่นี่
       _showStatusBanner(
         title: 'Update failed',
         message: error.message,
@@ -100,7 +99,6 @@ class _StatusUserState extends State<StatusUser> {
     }
   }
 
-  /// Dialog ยืนยันแบบมี icon วงกลม + ข้อความกึ่งกลาง + ปุ่มเต็มความกว้าง
   Future<bool?> _showConfirmDialog({
     required String username,
     required bool wantsInactive,
@@ -199,7 +197,6 @@ class _StatusUserState extends State<StatusUser> {
     );
   }
 
-  /// การ์ดแจ้งผลแบบ floating (สำเร็จ = เขียว, ล้มเหลว = แดง)
   void _showStatusBanner({
     required String title,
     required String message,
@@ -266,7 +263,6 @@ class _StatusUserState extends State<StatusUser> {
     );
   }
 
-  /// Dialog แจ้งเตือนเมื่อ Admin พยายาม deactivate บัญชีตัวเอง
   void _showActionNotAllowedDialog(String message) {
     if (!mounted) return;
 
@@ -432,11 +428,13 @@ class _StatusUserState extends State<StatusUser> {
       );
     }
 
-    return ListView.separated(
+    final userListView = ListView.separated(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      physics: _users.length > _maxVisibleUsersBeforeScroll
+          ? const AlwaysScrollableScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       itemCount: _users.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: _userCardSpacing),
       itemBuilder: (context, index) {
         final user = _users[index];
         final isInactive = user.isInactive;
@@ -489,5 +487,22 @@ class _StatusUserState extends State<StatusUser> {
         );
       },
     );
+
+    if (_users.length > _maxVisibleUsersBeforeScroll) {
+      final visibleHeight =
+          (_userCardHeight * _maxVisibleUsersBeforeScroll) +
+          (_userCardSpacing * (_maxVisibleUsersBeforeScroll - 1));
+
+      return SizedBox(
+        height: visibleHeight,
+        child: Scrollbar(
+          thumbVisibility: true,
+          radius: const Radius.circular(8),
+          child: userListView,
+        ),
+      );
+    }
+
+    return userListView;
   }
 }

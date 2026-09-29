@@ -24,7 +24,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      // SRS-075: แสดง SnackBar สีแดง พร้อมข้อความแจ้งเตือนจาก Backend/AuthService
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error.message),
@@ -55,10 +54,8 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              // Spacer ด้านบนโลโก้
               const Spacer(flex: 3),
 
-              // โลโก้แอป
               Center(
                 child: SizedBox(
                   width: 240,
@@ -72,7 +69,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 12),
 
-              // ข้อความสโลแกนใต้โลโก้
               const Text(
                 'Smart AI Assistant\nfor Movement & Posture',
                 textAlign: TextAlign.center,
@@ -84,10 +80,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // Spacer คั่นระหว่างโลโก้กับกลุ่มปุ่ม (flex 2)
               const Spacer(flex: 2),
 
-              // ปุ่ม Sign in with Google
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -141,8 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
               ),
 
-              // เพิ่ม Spacer/SizedBox ด้านล่างสุดเพื่อขยับกลุ่มปุ่มขึ้นไปด้านบน
-              const SizedBox(height: 48), // หรือปรับความสูงตรงนี้ตามต้องการ (เช่น 40 - 80)
+              const SizedBox(height: 48), 
             ],
           ),
         ),

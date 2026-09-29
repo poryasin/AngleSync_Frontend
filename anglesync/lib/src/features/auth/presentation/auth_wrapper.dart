@@ -11,19 +11,16 @@ class AuthWrapper extends StatelessWidget {
     return FutureBuilder<String?>(
       future: AuthService().getToken(),
       builder: (context, snapshot) {
-        // ขณะกำลังโหลด Token จาก Storage
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // ถ้ามี Token -> ให้เข้าหน้าหลัก
         if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
           return const MainShell();
         }
 
-        // ถ้าไม่มี Token -> ไปหน้า Login
         return const LoginScreen();
       },
     );
